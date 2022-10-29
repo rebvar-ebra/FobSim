@@ -22,22 +22,66 @@ class Miner:
         self.delegates = None
         self.adversary = False
 
+        self.view_number = 0  # Initiated with 1 and increases with each view change
+        self.primary_node_id = self.address
+        # Dictionary of tuples of accepted preprepare messages: preprepares=[(view_number,sequence_number):digest]
+        self.preprepares = {}
+        self.prepared_messages = []  # set of prepared messages
+        # Maintain a dictionary of the last reply for each client: replies={client_id_1:[last_request_1,last_reply_1],...}
+        self.replies = {}
+        self.message_reply = []  # List of all the reply messages
+        # Dictionary of accepted prepare messages: prepares = {(view_number,sequence_number,digest):[different_nodes_that_replied]}
+        self.prepares = {}
+        # Dictionary of accepted commit messages: commits = {(view_number,sequence_number,digest):[different_nodes_that_replied]}
+        self.commits = {}
+        self.message_log = []  # Set of accepted messages
+        # A dictionary that for each client, stores the timestamp of the last reply
+        self.last_reply_timestamp = {}
+        # Dictionary of checkpoints: {checkpoint:[list_of_nodes_that_voted]}
+        self.checkpoints = {}
+        # List of sequence numbers where a checkpoint was proposed
+        self.checkpoints_sequence_number = []
+        self.stable_checkpoint = {"message_type": "CHECKPOINT", "sequence_number": 0,
+                                  "checkpoint_digest": "the_checkpoint_digest", "node_id": self.address}  # The last stable checkpoint
+        # list of nodes that voted for the last stable checkpoint
+        self.stable_checkpoint_validators = []
+        self.h = 0  # The low water mark = sequence number of the last stable checkpoint
+        self.H = self.h + 200  # The high watermark, proposed value in the original article
+        # This is a dictionary of the accepted preprepare messages with the time they were accepted so that one the timer is reached, the node starts a wiew change. The dictionary has the form : {"request":starting_time...}. the request is discarded once it is executed.
+        self.accepted_requests_time = {}
+        # This is a dictionary of the accepted preprepare messages with the time they were replied to. The dictionary has the form : {"request": ["reply",replying_time]...}. the request is discarded once it is executed.
+        self.replies_time = {}
+        # Dictionary of received view-change messages (+ the view change the node itself sent) if the node is the primary node in the new view, it has the form: {new_view_number:[list_of_view_change_messages]}
+        self.received_view_changes = {}
+        self.asked_view_change = []  # view numbers the node asked for
+
+        # handlers
+
     def build_block(self, num_of_tx_per_block, mempool, miner_list, type_of_consensus, blockchain_function, expected_chain_length, AI_assisted_mining_wanted):
         if type_of_consensus == 3 and not self.isAuthorized:
             output.unauthorized_miner_msg(self.address)
         elif type_of_consensus == 4:
-            waiting_time = (self.top_block['Body']['timestamp'] + self.waiting_times[self.top_block['Header']['blockNo'] + 1]) - time.time()
+            waiting_time = (self.top_block['Body']['timestamp'] +
+                            self.waiting_times[self.top_block['Header']['blockNo'] + 1]) - time.time()
             if waiting_time <= 0:
-                self.continue_building_block(num_of_tx_per_block, mempool, miner_list, type_of_consensus, blockchain_function, expected_chain_length, AI_assisted_mining_wanted)
+                self.continue_building_block(num_of_tx_per_block, mempool, miner_list, type_of_consensus,
+                                             blockchain_function, expected_chain_length, AI_assisted_mining_wanted)
+        elif type_of_consensus == 6:
+            if self.leader != None:
+
+                self.continue_building_block(num_of_tx_per_block, mempool, miner_list, type_of_consensus,
+                                             blockchain_function, expected_chain_length, AI_assisted_mining_wanted)
         else:
-            self.continue_building_block(num_of_tx_per_block, mempool, miner_list, type_of_consensus, blockchain_function, expected_chain_length, AI_assisted_mining_wanted)
+            self.continue_building_block(num_of_tx_per_block, mempool, miner_list, type_of_consensus,
+                                         blockchain_function, expected_chain_length, AI_assisted_mining_wanted)
 
     def continue_building_block(self, num_of_tx_per_block, mempool, miner_list, type_of_consensus, blockchain_function, expected_chain_length, AI_assisted_mining_wanted):
         accumulated_transactions = new_consensus_module.accumulate_transactions(num_of_tx_per_block, mempool, blockchain_function,
                                                                                 self.address)
         if accumulated_transactions:
             transactions = accumulated_transactions
-            new_block = self.abstract_block_building(blockchain_function, transactions, miner_list, type_of_consensus, AI_assisted_mining_wanted)
+            new_block = self.abstract_block_building(
+                blockchain_function, transactions, miner_list, type_of_consensus, AI_assisted_mining_wanted)
             output.block_info(new_block, type_of_consensus)
             time.sleep(self.trans_delay)
             for elem in miner_list:
@@ -47,7 +91,8 @@ class Miner:
 
     def abstract_block_building(self, blockchain_function, transactions, miner_list, type_of_consensus, AI_assisted_mining_wanted):
         if blockchain_function == 3:
-            transactions = self.validate_transactions(transactions, "generator")
+            transactions = self.validate_transactions(
+                transactions, "generator")
         if self.gossiping:
             self.gossip(blockchain_function, miner_list)
         new_block = new_consensus_module.generate_new_block(transactions, self.address,
@@ -56,15 +101,21 @@ class Miner:
         if type_of_consensus == 4:
             new_block['Header']['PoET'] = encryption_module.retrieve_signature_from_saved_key(
                 new_block['Body']['previous_hash'], self.address)
+        if type_of_consensus == 6:
+            new_block = new_consensus_module.generate_new_block(transactions, self.address,
+                                                                self.top_block['Header']['hash'], type_of_consensus,
+                                                                AI_assisted_mining_wanted, self.adversary)
         return new_block
 
     def receive_new_block(self, new_block, type_of_consensus, miner_list, blockchain_function, expected_chain_length):
         block_already_received = False
-        local_chain_temporary_file = modification.read_file(str("temporary/" + self.address + "_local_chain.json"))
-        # print("a new block is received from " + str(new_block['generator_id']))
-        condition_1 = (len(local_chain_temporary_file) == 0) and (new_block['Header']['generator_id'] == 'The Network')
+        local_chain_temporary_file = modification.read_file(
+            str("temporary/" + self.address + "_local_chain.json"))
+        condition_1 = (len(local_chain_temporary_file) == 0) and (
+            new_block['Header']['generator_id'] == 'The Network')
         if condition_1:
-            self.add(new_block, blockchain_function, expected_chain_length, miner_list)
+            self.add(new_block, blockchain_function,
+                     expected_chain_length, miner_list)
         else:
             if self.gossiping:
                 self.gossip(blockchain_function, miner_list)
@@ -77,14 +128,17 @@ class Miner:
                     break
             if not block_already_received:
                 if new_consensus_module.block_is_valid(type_of_consensus, new_block, self.top_block, self.next_pos_block_from, miner_list, self.delegates):
-                    self.add(new_block, blockchain_function, expected_chain_length, miner_list)
+                    self.add(new_block, blockchain_function,
+                             expected_chain_length, miner_list)
                     time.sleep(self.trans_delay)
                     for elem in miner_list:
                         if elem.address in self.neighbours:
-                            elem.receive_new_block(new_block, type_of_consensus, miner_list, blockchain_function, expected_chain_length)
+                            elem.receive_new_block(
+                                new_block, type_of_consensus, miner_list, blockchain_function, expected_chain_length)
 
     def validate_transactions(self, list_of_new_transactions, miner_role):
-        user_wallets_temporary_file = modification.read_file(str("temporary/" + self.address + "_users_wallets.json"))
+        user_wallets_temporary_file = modification.read_file(
+            str("temporary/" + self.address + "_users_wallets.json"))
         if list_of_new_transactions:
             for key in user_wallets_temporary_file:
                 for transaction in list_of_new_transactions:
@@ -98,72 +152,93 @@ class Miner:
                             user_wallets_temporary_file[key]['wallet_value'] += transaction[0]
                     if miner_role == "generator" and key == (str(transaction[1]) + "." + str(transaction[2])):
                         if user_wallets_temporary_file[key]['wallet_value'] < transaction[0]:
-                            output.illegal_tx(transaction, user_wallets_temporary_file[key]['wallet_value'])
+                            output.illegal_tx(
+                                transaction, user_wallets_temporary_file[key]['wallet_value'])
                             del transaction
         if miner_role == "generator":
             return list_of_new_transactions
         if miner_role == "receiver":
-            modification.rewrite_file(str("temporary/" + self.address + "_users_wallets.json"), user_wallets_temporary_file)
+            modification.rewrite_file(str(
+                "temporary/" + self.address + "_users_wallets.json"), user_wallets_temporary_file)
             return True
 
     def add(self, block, blockchain_function, expected_chain_length, list_of_miners):
         ready = False
-        local_chain_temporary_file = modification.read_file("temporary/" + self.address + "_local_chain.json")
+        local_chain_temporary_file = modification.read_file(
+            "temporary/" + self.address + "_local_chain.json")
         if len(local_chain_temporary_file) == 0:
             ready = True
         else:
-            condition = blockchain_function == 3 and self.validate_transactions(block['Body']['transactions'], "receiver")
+            condition = blockchain_function == 3 and self.validate_transactions(
+                block['Body']['transactions'], "receiver")
             if blockchain_function != 3 or condition:
                 if block['Body']['previous_hash'] == self.top_block['Header']['hash']:
-                    blockchain.report_a_successful_block_addition(block['Header']['generator_id'], block['Header']['hash'])
+                    blockchain.report_a_successful_block_addition(
+                        block['Header']['generator_id'], block['Header']['hash'])
                     # output.block_success_addition(self.address, block['generator_id'])
                     ready = True
         if ready:
             block['Header']['blockNo'] = len(local_chain_temporary_file)
             self.top_block = block
-            local_chain_temporary_file[str(len(local_chain_temporary_file))] = block
-            modification.rewrite_file(str("temporary/" + self.address + "_local_chain.json"), local_chain_temporary_file)
+            local_chain_temporary_file[str(
+                len(local_chain_temporary_file))] = block
+            modification.rewrite_file(str(
+                "temporary/" + self.address + "_local_chain.json"), local_chain_temporary_file)
             if self.gossiping:
-                self.update_global_longest_chain(local_chain_temporary_file, blockchain_function, list_of_miners)
+                self.update_global_longest_chain(
+                    local_chain_temporary_file, blockchain_function, list_of_miners)
 
     def gossip(self, blockchain_function, list_of_miners):
-        local_chain_temporary_file = modification.read_file(str("temporary/" + self.address + "_local_chain.json"))
-        temporary_global_longest_chain = modification.read_file('temporary/longest_chain.json')
-        condition_1 = len(temporary_global_longest_chain['chain']) > len(local_chain_temporary_file)
-        condition_2 = self.global_chain_is_confirmed_by_majority(temporary_global_longest_chain['chain'], len(list_of_miners))
+        local_chain_temporary_file = modification.read_file(
+            str("temporary/" + self.address + "_local_chain.json"))
+        temporary_global_longest_chain = modification.read_file(
+            'temporary/longest_chain.json')
+        condition_1 = len(temporary_global_longest_chain['chain']) > len(
+            local_chain_temporary_file)
+        condition_2 = self.global_chain_is_confirmed_by_majority(
+            temporary_global_longest_chain['chain'], len(list_of_miners))
         if condition_1 and condition_2:
             confirmed_chain = temporary_global_longest_chain['chain']
             confirmed_chain_from = temporary_global_longest_chain['from']
-            modification.rewrite_file(str("temporary/" + self.address + "_local_chain.json"), confirmed_chain)
+            modification.rewrite_file(
+                str("temporary/" + self.address + "_local_chain.json"), confirmed_chain)
             self.top_block = confirmed_chain[str(len(confirmed_chain) - 1)]
             output.local_chain_is_updated(self.address, len(confirmed_chain))
             if blockchain_function == 3:
-                user_wallets_temp_file = modification.read_file(str("temporary/" + confirmed_chain_from + "_users_wallets.json"))
-                modification.rewrite_file(str("temporary/" + self.address + "_users_wallets.json"), user_wallets_temp_file)
+                user_wallets_temp_file = modification.read_file(
+                    str("temporary/" + confirmed_chain_from + "_users_wallets.json"))
+                modification.rewrite_file(
+                    str("temporary/" + self.address + "_users_wallets.json"), user_wallets_temp_file)
 
     def global_chain_is_confirmed_by_majority(self, global_chain, no_of_miners):
         chain_is_confirmed = True
-        temporary_confirmations_log = modification.read_file('temporary/confirmation_log.json')
+        temporary_confirmations_log = modification.read_file(
+            'temporary/confirmation_log.json')
         for block in global_chain:
             condition_0 = block != '0'
             if condition_0:
-                condition_1 = not (global_chain[block]['Header']['hash'] in temporary_confirmations_log)
+                condition_1 = not (
+                    global_chain[block]['Header']['hash'] in temporary_confirmations_log)
                 if condition_1:
                     chain_is_confirmed = False
                     break
                 else:
-                    condition_2 = temporary_confirmations_log[global_chain[block]['Header']['hash']]['votes'] <= (no_of_miners / 2)
+                    condition_2 = temporary_confirmations_log[global_chain[block]['Header']['hash']]['votes'] <= (
+                        no_of_miners / 2)
                     if condition_2:
                         chain_is_confirmed = False
                         break
         return chain_is_confirmed
 
     def update_global_longest_chain(self, local_chain_temporary_file, blockchain_function, list_of_miners):
-        temporary_global_longest_chain = modification.read_file('temporary/longest_chain.json')
+        temporary_global_longest_chain = modification.read_file(
+            'temporary/longest_chain.json')
         if len(temporary_global_longest_chain['chain']) < len(local_chain_temporary_file):
             temporary_global_longest_chain['chain'] = local_chain_temporary_file
             temporary_global_longest_chain['from'] = self.address
-            modification.rewrite_file('temporary/longest_chain.json', temporary_global_longest_chain)
+            modification.rewrite_file(
+                'temporary/longest_chain.json', temporary_global_longest_chain)
         else:
             if len(temporary_global_longest_chain['chain']) > len(local_chain_temporary_file) and self.gossiping:
                 self.gossip(blockchain_function, list_of_miners)
+
