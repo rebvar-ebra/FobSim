@@ -373,10 +373,7 @@ def process_received_message(self,received_message,waiting_time):
                         reply_list=[message["request_digest"],message["client_id"],message["result"]]
                         reply_digest = hashlib.sha256(str(reply_list).encode()).hexdigest()
                         if (reply_digest == received_message["checkpoint_digest"]):
-                            # with open(checkpoint_vote_format_file):
-                            #     checkpoint_vote_format= open(checkpoint_vote_format_file)
-                            #     checkpoint_vote_message = json.load(checkpoint_vote_format)
-                            #     checkpoint_vote_format.close()
+                            
                             checkpoint_vote_message=json_load(checkpoint_vote_format_file)
                             checkpoint_vote_message["sequence_number"] = received_message["sequence_number"]
                             checkpoint_vote_message["checkpoint_digest"] = received_message["checkpoint_digest"]
@@ -434,10 +431,7 @@ def process_received_message(self,received_message,waiting_time):
                             self.received_view_changes[new_asked_view].append(view_change_message)
                       
                         # Broadcast a new view message:
-                        """ with open(new_view_format_file):
-                            new_view_format= open(new_view_format_file)
-                            new_view_message = json.load(new_view_format)
-                            new_view_format.close() """
+                        
                         new_view_message=json_load(new_view_format_file)
                         new_view_message["new_view_number"]=new_asked_view
 
@@ -751,7 +745,6 @@ class FaultyNode(miner): # This node changes digest in prepare message
         miner.receive(self,waiting_time)
     def broadcast_prepare_message(self,preprepare_message,nodes_ids_list): # The node broadcasts a prepare message
         if (replied_requests[preprepare_message["request"]]==0):
-            # S'assurer des conditions avant d'envoyer le PREPARE message
             prepare_message=json_load(prepare_format_file)
             prepare_message["view_number"]=self.view_number
             prepare_message["sequence_number"]=preprepare_message["sequence_number"]
