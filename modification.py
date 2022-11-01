@@ -1,3 +1,4 @@
+import contextlib
 import random
 import json
 import os
@@ -26,7 +27,7 @@ def initiate_files(gossip_activated):
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
         except Exception as e:
-            print('Failed to delete %s. Reason: %s' % (file_path, e))
+            print(f'Failed to delete {file_path}. Reason: {e}')
     write_file('temporary/confirmation_log.json', {})
     write_file('temporary/miner_wallets_log.json', {})
     if gossip_activated:
@@ -38,13 +39,11 @@ def read_file(file_path):
         time.sleep(0.1)
     get_key()
     while True:
-        try:
+        with contextlib.suppress(Exception):
             with open(file_path, 'r') as f:
                 file = json.load(f)
             return_key()
             return file
-        except Exception as e:
-            pass
 
 
 def write_file(file_path, contents):
@@ -52,13 +51,11 @@ def write_file(file_path, contents):
         time.sleep(0.1)
     get_key()
     while True:
-        try:
+        with contextlib.suppress(Exception):
             with open(file_path, 'w') as f:
                 json.dump(contents, f, indent=4)
             return_key()
             break
-        except Exception as e:
-            pass
 
 
 def rewrite_file(file_path, new_version):
@@ -69,13 +66,11 @@ def rewrite_file(file_path, new_version):
         try:
             os.remove(file_path)
         except Exception as e:
-            try:
+            with contextlib.suppress(Exception):
                 with open(file_path, "w") as f:
                     json.dump(new_version, f, indent=4)
                 return_key()
                 break
-            except Exception as e:
-                pass
 
 
 return_key()

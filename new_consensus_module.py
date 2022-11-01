@@ -1,4 +1,5 @@
 import blockchain
+import contextlib
 import mempool
 import output
 import modification
@@ -35,18 +36,17 @@ def accumulate_transactions(num_of_tx_per_block, this_mem_pool, blockchain_funct
             try:
                 lst_of_transactions = this_mem_pool.get(True, 1)
                 lst_of_transactions.append(eval(lst_of_transactions[2]))
-                produced_transaction = ['End-user address: ' + str(lst_of_transactions[0]) + '.' + str(lst_of_transactions[1]),
-                                        'Requested computational task: ' + str(lst_of_transactions[2]), 'Result: '
-                                        + str(lst_of_transactions[3]), "miner: " + str(miner_address)]
-                return produced_transaction
-            except:
+                return [f'End-user address: {str(lst_of_transactions[0])}.{str(lst_of_transactions[1])}', f'Requested computational task: {str(lst_of_transactions[2])}', f'Result: {str(lst_of_transactions[3])}', f"miner: {str(miner_address)}"]
+
+
+            except Exception:
                 print("error in accumulating new TXs:")
     else:
-        for i in range(num_of_tx_per_block):
+        for _ in range(num_of_tx_per_block):
             if this_mem_pool.qsize() > 0:
                 try:
                     lst_of_transactions.append(this_mem_pool.get(True, 1))
-                except:
+                except Exception:
                     print("error in accumulating full new list of TXs")
             else:
                 output.mempool_is_empty()
@@ -80,10 +80,8 @@ def trigger_pow_miners(the_miners_list, the_type_of_consensus, expected_chain_le
 def trigger_pos_miners(the_miners_list, the_type_of_consensus, expected_chain_length, numOfTXperBlock,
                        blockchainFunction):
     for counter in range(expected_chain_length):
-        randomly_chosen_miners = []
         x = int(round((len(the_miners_list) / 2), 0))
-        for i in range(x):
-            randomly_chosen_miners.append(random.choice(the_miners_list))
+        randomly_chosen_miners = [random.choice(the_miners_list) for _ in range(x)]
         biggest_stake = 0
         final_chosen_miner = the_miners_list[0]
         temp_file_py = modification.read_file('temporary/miners_stake_amounts.json')
@@ -176,17 +174,23 @@ def trigger_dpos_miners(expected_chain_length, the_miners_list, number_of_delega
         
 
 def trigger_bft_miners(the_miners_list, the_type_of_consensus, expected_chain_length, numOfTXperBlock,blockchainFunction):
-    for obj in the_miners_list:
-        if obj.leader: 
-            obj.build_block(
-                    numOfTXperBlock, mempool.MemPool, the_miners_list, the_type_of_consensus, blockchainFunction,
-                    expected_chain_length, None)
-
-        else:
-            obj.receive_new_block(numOfTXperBlock, mempool.MemPool, the_miners_list, the_type_of_consensus, blockchainFunction,
-                                       expected_chain_length, None)  
+    Number_of_confirm_blocks=0
+    while Number_of_confirm_blocks < expected_chain_length:
+        for obj in the_miners_list:
+            
+            if obj.leader == obj.address: 
+                    if obj.top_block == len(obj.commits)-1:
+                        obj.build_block(
+                                numOfTXperBlock, mempool.MemPool, the_miners_list, the_type_of_consensus, blockchainFunction,
+                                expected_chain_length, None)
+                        Number_of_confirm_blocks=+1
+                    else:
+                        time.sleep(1)
+                    
               
-    #print("  \t",processes,"\n",obj.__dict__)
+
+              
+        #print("  \t" "\n",obj.__dict__)
     
     
     
@@ -200,38 +204,29 @@ def pow_mining(block, AI_assisted_mining_wanted, is_adversary):
             block['Header']['hash'] = encryption_module.hashing_function(block['Body'])
             if pow_block_is_valid(block, block['Body']['previous_hash']):
                 new_block = block
-                break
             else:
                 new_block = pow_classical_mining(block)
-                break
         else:
             new_block = pow_classical_mining(block)
-            break
+        break
     return new_block
 
 
 def pow_classical_mining(block):
-    if block['Body']['nonce'] > 4000000000/2:
-        up = False
-    else:
-        up = True
-    for i in range(1, 4000000000):
+    up = block['Body']['nonce'] <= 4000000000/2
+    for _ in range(1, 4000000000):
         block['Header']['hash'] = encryption_module.hashing_function(block['Body'])
         if int(block['Header']['hash'], 16) <= blockchain.target:
             return block
+        if up:
+            block['Body']['nonce'] += 1
         else:
-            if up:
-                block['Body']['nonce'] += 1
-            else:
-                block['Body']['nonce'] -= 1
-            continue
+            block['Body']['nonce'] -= 1
 
 
 def dpos_voting(the_miners_list):
     temp_file_py = modification.read_file('temporary/miner_wallets_log.json')
-    votes_and_stakes = {}
-    for miner in the_miners_list:
-        votes_and_stakes[miner.address] = {}
+    votes_and_stakes = {miner.address: {} for miner in the_miners_list}
     for miner in the_miners_list:
         chosen_miner = miner
         while chosen_miner == miner:
@@ -269,9 +264,7 @@ def pos_block_is_valid(generator_id, next_block_from, block, expected_previous_h
     condition_1 = block['Header']['hash'] == encryption_module.hashing_function(block['Body'])
     condition_2 = block['Body']['previous_hash'] == expected_previous_hash
     condition_3 = generator_id == next_block_from
-    if condition_1 and condition_2 and condition_3:
-        return True
-    return False
+    return condition_1 and condition_2 and condition_3
 
 
 def poa_block_is_valid(block, expected_previous_hash, miner_list):
@@ -304,32 +297,19 @@ def dpos_block_is_valid(new_block, delegates, expected_previous_hash):
         condition3 = new_block['Body']['previous_hash'] == expected_previous_hash
         if condition1 and condition2 and condition3:
             return True
-    except:
+    except Exception:
         pass
     return False
 
 def bft_block_is_valid(new_block,expected_previous_hash,miner_list):
-    try:
+    with contextlib.suppress(Exception):
         condition1=new_block['Header']['Previous_hash']==expected_previous_hash
-        condition2=encryption_module.retrieve_signature_from_saved_key(new_block['Header']['generator_id'],new_block['Header']['BFT'])
-        condition3=new_block['Header']['hash']==encryption_module.retrieve_signature_from_saved_key(new_block['Header']['previous_hash'],miner_list)
-        if condition1 and condition2 and condition3:
+        condition2=new_block['Header']['hash']==encryption_module.retrieve_signature_from_saved_key(new_block['Header']['previous_hash'],miner_list)
+        if condition1 and condition2:
             return True
-    except:
-            pass
     return False
 
 
-def type_message_(message):
-    if message == 'preprepare':
-        return message
-    elif message =='prepare':
-        return message
-    elif  message =='commit':
-        return message
-    else:
-        message == 'reply'
-        return message
 
 # MODIFIABLE PART:
 # 1- add a number and a name of the new consensus algorithm (all strings)
@@ -354,7 +334,6 @@ def prepare_necessary_files():
         modification.write_file('temporary/miners_stake_amounts.json', {})
     if num_of_consensus == 6:
         modification.write_file('temporary/reply.json',{})
-        pass
         # modification.write_file('temporary/example_of_new_log_file.json', {})
 
 
@@ -380,8 +359,8 @@ def generate_new_block(transactions, generator_id, previous_hash, type_of_consen
     if type_of_consensus == 5:
         new_block['Header']['dummy_new_proof'] = dummy_proof_generator_function(new_block)
     if type_of_consensus ==6:
+        new_block['Header']['BFT']= ""
         
-        new_block['Header']['BFT']=''
     return new_block
 
 # 4- the 'miners_trigger' function triggers the miners to start mining/minting new blocks.
@@ -439,7 +418,7 @@ def block_is_valid(type_of_consensus, new_block, top_block, next_pos_block_from,
     if type_of_consensus == 5:
         return dpos_block_is_valid(new_block, delegates, top_block['Header']['hash'])
     if type_of_consensus ==6:
-        return bft_block_is_valid(new_block['Header']['BFT'],miner_list,top_block['Header']['hash'])
+        return bft_block_is_valid(new_block,miner_list,top_block['Header']['hash'])
         
     if type_of_consensus == 7:
         return dummy_block_is_valid(new_block)

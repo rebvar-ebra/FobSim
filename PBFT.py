@@ -15,18 +15,15 @@ from multiprocessing import Process
 import main
 
 ports_file = "ports.json"
-with open(ports_file):
-    ports_format= open(ports_file)
-    ports = json.load(ports_format)
-    ports_format.close()
-
+with open(ports_file) as ports_format:
+        ports = json.load(ports_format)
 clients_starting_port = ports["clients_starting_port"]
 clients_max_number = ports["clients_max_number"]
 
 nodes_starting_port = ports["nodes_starting_port"]
 nodes_max_number = ports["nodes_max_number"]
 
-nodes_ports = [(nodes_starting_port + i) for i in range (0,nodes_max_number)]
+nodes_ports = [nodes_starting_port + i for i in range(nodes_max_number)]
 clients_ports = [(clients_starting_port + i) for i in range (0,clients_max_number)]
 
 preprepare_format_file = "messages_formats/preprepare_format.json"
@@ -40,100 +37,96 @@ new_view_format_file = "messages_formats/new_view_format.json"
 
 def run_PBFT(nodes,proportion,checkpoint_frequency0,clients_ports0,timer_limit_before_view_change0): # All the nodes participate in the consensus
 
-    global p
-    p = proportion
+        global p
+        p = proportion
 
-    global number_of_messages
-    number_of_messages = {} # This dictionary will store for each request the number of exchanged messages from preprepare to reply: number_of_messages={"request":number_of_exchanged_messages,...}
+        global number_of_messages
+        number_of_messages = {} # This dictionary will store for each request the number of exchanged messages from preprepare to reply: number_of_messages={"request":number_of_exchanged_messages,...}
 
-    global replied_requests
-    replied_requests = {} # This dictionary tells if a request was replied to (1) or not
+        global replied_requests
+        replied_requests = {} # This dictionary tells if a request was replied to (1) or not
 
-    global timer_limit_before_view_change
-    timer_limit_before_view_change = timer_limit_before_view_change0
+        global timer_limit_before_view_change
+        timer_limit_before_view_change = timer_limit_before_view_change0
 
-    global clients_ports
-    clients_ports = clients_ports0
+        global clients_ports
+        clients_ports = clients_ports0
 
-    global accepted_replies
-    accepted_replies = {} # Dictionary that stores for every request the reply accepted by the client
+        global accepted_replies
+        accepted_replies = {} # Dictionary that stores for every request the reply accepted by the client
 
-    global n
-    n = 0 # total nodes number - It is initiated to 0 and incremented each time a node is instantiated
+        global n
+        n = 0 # total nodes number - It is initiated to 0 and incremented each time a node is instantiated
 
-    global f
-    f = (n - 1) // 3 # Number of permitted faulty nodes - Should be updated each time n is changed
-    global list_of_miners
+        global f
+        f = (n - 1) // 3 # Number of permitted faulty nodes - Should be updated each time n is changed
+        global list_of_miners
 
-    miner_list=main.initiate_miners()
-    list_of_miners=main.isleader_todo(miner_list)
-    
-    list_of_miners = [i for i in range (n)]
+        miner_list=main.initiate_miners()
+        list_of_miners=main.isleader_todo(miner_list)
 
-    global j # next id node (each time a new node is instantiated, it is incremented)
-    j = 0
+        list_of_miners = list(range (n))
 
-    global requests # a dictionary where keys are the clients' ids and the value is the timestamp of their last request
-    requests = {} # Initiate as an empty dictionary
+        global j # next id node (each time a new node is instantiated, it is incremented)
+        j = 0
 
-    global checkpoint_frequency
-    checkpoint_frequency=checkpoint_frequency0
+        global requests # a dictionary where keys are the clients' ids and the value is the timestamp of their last request
+        requests = {} # Initiate as an empty dictionary
 
-    global sequence_number
-    sequence_number = 1 # Initiate the sequence number to 0 and increment it with each new request - we choosed 0 so that we can have a stable checkpoint at the beginning (necessary for a view change)
+        global checkpoint_frequency
+        checkpoint_frequency=checkpoint_frequency0
 
-    global nodes_list
-    nodes_list = []
+        global sequence_number
+        sequence_number = 1 # Initiate the sequence number to 0 and increment it with each new request - we choosed 0 so that we can have a stable checkpoint at the beginning (necessary for a view change)
 
-    global total_processed_messages
-    total_processed_messages = 0 # The total number of preocessed messages - this is the total number of send messages through the netwirk while processing a request
+        global nodes_list
+        nodes_list = []
 
-    # Nodes evaluation metrics:
+        global total_processed_messages
+        total_processed_messages = 0 # The total number of preocessed messages - this is the total number of send messages through the network while processing a request
 
-    global processed_messages 
-    processed_messages = [] # Number of processed messages by each node
-    
-    global messages_processing_rate
-    messages_processing_rate = [] # This is the rate of processed messages among all the nodes in the network - calculated as the ratio of messages sent by the node to all sent messages through the network by all the nodes
+        # Nodes evaluation metrics:
 
-    ###################
+        global processed_messages
+        processed_messages = [] # Number of processed messages by each node
 
-    global consensus_nodes # ids of nodes participating in the consensus
-    consensus_nodes=[]
-    
-    #threading.Thread(target=run_nodes,args=(nodes,)).start()
-    Process(target=run_nodes,args=(nodes,)).start()
+        global messages_processing_rate
+        messages_processing_rate = [] # This is the rate of processed messages among all the nodes in the network - calculated as the ratio of messages sent by the node to all sent messages through the network by all the nodes
+        global consensus_nodes # ids of nodes participating in the consensus
+        consensus_nodes=[]
+        #threading.Thread(target=run_nodes,args=(nodes,)).start()
+        Process(target=run_nodes,args=(nodes,)).start()
 
 def run_nodes(nodes):
     global j
     global n
     global f
-    
-    
+
+
     total_initial_nodes = 0
     for node_type in nodes[0]:
         total_initial_nodes = total_initial_nodes + node_type[1]
-    
+
     # Starting nodes:
     last_waiting_time = 0
     for waiting_time in nodes:
         for tuple in nodes[waiting_time]:
-            for i in range (tuple[1]):
+            node_type = tuple[0]
+            for _ in range (tuple[1]):
                 time.sleep(waiting_time-last_waiting_time)
                 last_waiting_time=waiting_time
-                node_type = tuple[0]
-                if (node_type=="honest_node"):
-                    node=HonestNode(node_id=j)
-                elif (node_type=="non_responding_node"):
-                    node=NonRespondingNode(node_id=j)
-                elif (node_type=="faulty_primary"):
-                    node=FaultyPrimary(node_id=j)
-                elif (node_type=="slow_nodes"):
-                    node=SlowNode(node_id=j)
-                elif (node_type=="faulty_node"):
+                if node_type == "faulty_node":
                     node=FaultyNode(node_id=j)
-                elif (node_type=="faulty_replies_node"):
+                elif node_type == "faulty_primary":
+                    node=FaultyPrimary(node_id=j)
+                elif node_type == "faulty_replies_node":
                     node=FaultyRepliesNode(node_id=j)
+                elif node_type == "honest_node":
+                    node=HonestNode(node_id=j)
+                elif node_type == "non_responding_node":
+                    node=NonRespondingNode(node_id=j)
+                elif node_type == "slow_nodes":
+                    node=SlowNode(node_id=j)
                 threading.Thread(target=node.receive,args=()).start()
                 nodes_list.append(node)
                 list_of_miners.append(j)
@@ -190,7 +183,7 @@ class Node():
         self.socket = s
         #print("address node",s)
         self.view_number=0 # Initiated with 1 and increases with each view change
-        self.primary_node_id=0
+        self.primary_node_id=0 # back up minner 
         self.preprepares={} # Dictionary of tuples of accepted preprepare messages: preprepares=[(view_number,sequence_number):digest]
         self.prepared_messages = [] # set of prepared messages
         self.replies={} # Maintain a dictionary of the last reply for each client: replies={client_id_1:[last_request_1,last_reply_1],...}

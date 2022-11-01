@@ -83,27 +83,26 @@ def initiate_network():
             new_attribute = input("If you want other attributes to be added to end_users, input them next:\n")
             if new_attribute == 'done':
                 break
-            else:
-                for user in list_of_end_users:
-                    user.identity_added_attributes[new_attribute] = ''
-                output.user_identity_addition_reminder(len(list_of_end_users))
+            for user in list_of_end_users:
+                user.identity_added_attributes[new_attribute] = ''
+            output.user_identity_addition_reminder(len(list_of_end_users))
     for user in list_of_end_users:
         user.create_tasks(NumOfTaskPerUser, blockchainFunction, list_of_end_users)
         user.send_tasks(fogNodes)
-        print("End_user " + str(user.addressParent) + "." + str(user.addressSelf) + " had sent its tasks to the fog layer")
+        print(f"End_user {str(user.addressParent)}.{str(user.addressSelf)} had sent its tasks to the fog layer")
 
 
 def initiate_miners():
     the_miners_list = []
 
     if blockchainPlacement == 1:
-        for i in range(NumOfFogNodes):
-            the_miners_list.append(miner.Miner(i + 1, trans_delay, gossip_activated))
+        the_miners_list.extend(miner.Miner(i + 1, trans_delay, gossip_activated) for i in range(NumOfFogNodes))
+
     if blockchainPlacement == 2:
-        for i in range(NumOfMiners):
-            the_miners_list.append(miner.Miner(i + 1, trans_delay, gossip_activated))
+        the_miners_list.extend(miner.Miner(i + 1, trans_delay, gossip_activated) for i in range(NumOfMiners))
+
     for entity in the_miners_list:
-        modification.write_file("temporary/" + entity.address + "_local_chain.json", {})
+        modification.write_file(f"temporary/{entity.address}_local_chain.json", {})
         miner_wallets_log_py = modification.read_file("temporary/miner_wallets_log.json")
         miner_wallets_log_py[str(entity.address)] = data['miners_initial_wallet_value']
         modification.rewrite_file("temporary/miner_wallets_log.json", miner_wallets_log_py)
@@ -179,10 +178,10 @@ def give_miners_authorization(the_miners_list, the_type_of_consensus):
                 if not random_miner.adversary:
                     random_miner.adversary = True
                     num_of_miners_instructed_to_use_AI += 1
-            print(str(num_of_miners_instructed_to_use_AI) + ' miners were successfully instructed to use AI.')
+            print(f'{num_of_miners_instructed_to_use_AI} miners were successfully instructed to use AI.')
+
         return wanted
     if the_type_of_consensus == 3:
-        # automated approach:
         if Automatic_PoA_miners_authorization:
             for i in range(len(the_miners_list)):
                 the_miners_list[i].isAuthorized = True
@@ -194,11 +193,10 @@ def give_miners_authorization(the_miners_list, the_type_of_consensus):
                 authorized_miner = input()
                 if authorized_miner == "done":
                     break
-                else:
-                    for node in the_miners_list:
-                        if node.address == "Miner_" + authorized_miner:
-                            node.isAuthorized = True
-                            list_of_authorized_miners.append(node)
+                for node in the_miners_list:
+                    if node.address == f"Miner_{authorized_miner}":
+                        node.isAuthorized = True
+                        list_of_authorized_miners.append(node)
     return None
 
 
@@ -224,7 +222,7 @@ def send_tasks_to_BC():
 
 def store_fog_data():
     for node in fogNodes:
-        log = open('temporary/Fog_node_'+str(node.address)+'.txt', 'w')
+        log = open(f'temporary/Fog_node_{str(node.address)}.txt', 'w')
         log.write(str(node.local_storage))
 
 
@@ -235,29 +233,30 @@ def inform_miners_of_users_wallets():
             wallet_info = {'parent': user.addressParent,
                            'self': user.addressSelf,
                            'wallet_value': user.wallet}
-            user_wallets[str(user.addressParent) + '.' + str(user.addressSelf)] = wallet_info
-        for i in range(len(miner_list)):
-            modification.rewrite_file(str("temporary/" + miner_list[i].address + "_users_wallets.json"), user_wallets)
+            user_wallets[f'{str(user.addressParent)}.{str(user.addressSelf)}'] = wallet_info
 
-""" def select_leader(list_of_miners):
-    selected_miner = random.choice(list_of_miners)
-    selected_miner.leader = True
+        for i in range(len(miner_list)):
+            modification.rewrite_file(str(f"temporary/{miner_list[i].address}_users_wallets.json"), user_wallets)
+
+
+def select_leader(list_of_miners):
+    selected_miner = random.choice(list_of_miners).address
     for entity in list_of_miners:
-        entity.leader = selected_miner.address 
+        entity.leader = selected_miner 
         entity.number_of_miners = len(list_of_miners)#
-        entity.number_of_tolerated_adversaries = entity.number_of_miners /2  
+        entity.number_of_tolerated_adversaries = entity.number_of_miners /3 
         
         
-    return list_of_miners """
-def isleader_todo(list_of_miners):
-        selected_of_miner=random.choice(list_of_miners)
-        selected_of_miner.leader =True
-        for entity in list_of_miners:
-            leader_index = entity.view_number % len(list_of_miners)
-            entity.leader = list_of_miners[leader_index]
-        if (selected_of_miner.address == entity.leader) and (entity.status == None):
-            print("\t \t \tcorrect")
-        return list_of_miners
+    return list_of_miners 
+# def isleader_todo(list_of_miners):
+#     selected_of_miner=random.choice(list_of_miners)
+#     selected_of_miner.leader =True
+#     for entity in list_of_miners:
+#         leader_index = entity.view_number % len(list_of_miners)
+#         entity.leader = list_of_miners[leader_index]
+#     if selected_of_miner.address == entity.leader and entity.status is None:
+#         print("\t \t \tcorrect")
+#     return list_of_miners
 
 
 if __name__ == '__main__':
@@ -277,53 +276,24 @@ if __name__ == '__main__':
             expected_chain_length = ceil((num_of_users_per_fog_node * NumOfTaskPerUser * NumOfFogNodes))
         new_consensus_module.miners_trigger(miner_list, type_of_consensus, expected_chain_length, Parallel_PoW_mining,
                                             numOfTXperBlock, blockchainFunction, poet_block_time, Asymmetric_key_length,
-                                            number_of_DPoS_delegates, AI_assisted_mining_wanted)
+                                            number_of_DPoS_delegates, AI_assisted_mining_wanted,False)
 
         blockchain.award_winning_miners(len(miner_list), miner_list)
         blockchain.fork_analysis(miner_list)
         output.finish()
         store_fog_data()
         elapsed_time = time.time() - time_start
-        print("elapsed time = " + str(elapsed_time) + " seconds")
+        print(f"elapsed time = {str(elapsed_time)} seconds")
     else:
-        miner_list=isleader_todo(miner_list)
+        miner_list=select_leader(miner_list)
         print("print miners init",miner_list)
         AI_assisted_mining_wanted=give_miners_authorization(miner_list,type_of_consensus)
         initiate_genesis_block(miner_list)
         send_tasks_to_BC() 
         new_consensus_module.miners_trigger(miner_list, type_of_consensus, expected_chain_length, Parallel_PoW_mining,
                                             numOfTXperBlock, blockchainFunction, poet_block_time, Asymmetric_key_length,
-                                            number_of_DPoS_delegates,AI_assisted_mining_wanted)
-        """ while True:
-            try:
-                time.sleep(1)
-                if isleader_todo():
-                    miner.print_debug("Leader to do (PPRE)")
-                    msg = miner.gen_preprepare_msg()
-                    miner.print_debug("Broadcast --(PPRE)-->> ")
-                    Process(miner_list, "PPRE", msg)
-                else:
-                    (src_id, msgtype, msgdata) = Process(target=miner.receive_new_block())
-                    next_action = miner.handler[msgtype](src_id, msgdata)
-                    if next_action == "PREP":
-                        msg = miner.gen_prepare_msg()
-                        miner.print_debug("Broadcast --(PREP)-->> ")
-                        Process(miner_list, "PREP", msg)
-                    elif next_action == "COMM":
-                        msg = miner.gen_commit_msg()
-                        miner.print_debug("Broadcast --(COMM)-->>")
-                        Process(miner_list, "COMM", msg)
-                    elif next_action == "REPL":
-                        (requester, msg) = miner.gen_reply_msg()
-                        miner.print_debug("Send --(REPL)--> " + str(requester))
-                        Process(requester, "REPL", msg)
-                        miner.round_finish()
-            except KeyboardInterrupt:
-                Process.close()
-                
-                break
-            except:
-                continue   """
-      
-        
+                                            number_of_DPoS_delegates, AI_assisted_mining_wanted)
 
+        #blockchain.award_winning_miners(len(miner_list), miner_list)
+        #blockchain.fork_analysis(miner_list)
+        output.finish()
