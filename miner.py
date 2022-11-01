@@ -20,6 +20,18 @@ class Miner:
         self.amount_to_be_staked = None
         self.delegates = None
         self.adversary = False
+        
+        self.local_database={"PREPREAPRE":{"hash_block":{
+                                    'vote':0,
+                                    'timeStamp':0
+                                    }},
+                       "PREPARE":{"hash_block":{
+                                    'vote':0,
+                                    'timeStamp':0
+                    }},"COMMIT":{"hash_block":{
+                                    'vote':0,
+                                    'timeStamp':0
+                                }}}
 
         self.view_number = 0  # Initiated with 1 and increases with each view change
         self.primary_node_id = self.address
@@ -61,7 +73,7 @@ class Miner:
         n=0
         global f
         f = (n - 1) // 3
-        # handlers
+        
 
     def build_block(self, num_of_tx_per_block, mempool, miner_list, type_of_consensus, blockchain_function, expected_chain_length, AI_assisted_mining_wanted):
         if type_of_consensus == 3 and not self.isAuthorized:
@@ -168,37 +180,66 @@ class Miner:
         
         
     
+    def get_f():
         
+        return f
+    def gen_time():
+        return time.time()
         
       
 
     def bft_respond(self,block,list_of_miners):  
         
         recvied_message = block['Header']['status']
-        if recvied_message !="PREPREPARE" and recvied_message["view"] != self.view_number or recvied_message["timestamp"] >= time.time():
+        
+        
+        if recvied_message !="PREPREPARE" and recvied_message["Header"]['hash'] != self.top_block['Header']['hash']:
             return False
         elif  recvied_message =="PREPREPARE":
              address_id=recvied_message["Header"]["generator_id"]
-             hash= recvied_message["Header"]["Hash"]
-             digest=encryption_module.hashing_function(hash)            
-             self.all.append(recvied_message)
-        elif recvied_message !="PREPARE" and recvied_message["view"] != self.view_number or recvied_message["timestamp"] >= time.time() or recvied_message["hash"] != digest:
+             actual_timestamp=self.top_block['Header']['timestamp']
+             timestamp = recvied_message["timestamp"]=self.gen_time()
+             if actual_timestamp >= timestamp:
+                 for database in self.local_database:
+                    database['PREPREAPRE']['vote']+=1
+                    database['PREPREAPRE']['time']=timestamp
+             else:
+                 
+                return False             
+             
+        elif recvied_message !="PREPARE" or recvied_message['Header']["hash"] != self.top_block['Header']['hash']or self.top_block['Header']['timestamp']< timestamp:
             return False
         elif recvied_message =="PREPARE":
-            if len(self.all) > f * (len(list_of_miners) - 1):
-                    self.prepared_messages.append(recvied_message)
-        elif recvied_message !="Commit" and recvied_message["view"] != self.view_number or recvied_message["timestamp"] >= time.time() or recvied_message["hash"] != digest:
-            if self.prepared_messages != 2 * f + 1:
+            address_id=recvied_message["Header"]["generator_id"]
+            actual_timestamp=self.top_block['Header']['timestamp']
+            timestamp = recvied_message["timestamp"]=self.gen_time()
+            if actual_timestamp >= timestamp and  len(self.local_database) > self.get_f() * (len(list_of_miners) - 1):
+                for database in self.local_database:
+                    database['PREAPRE']['vote']+=2
+                    database['PREAPRE']['time']=timestamp
+            else:
+                 
+                return False 
+               
+        elif recvied_message !="Commit"  or recvied_message["timestamp"] <= self.top_block['Header']['timestamp']:
+            if self.prepared_messages != self.get_f:
                  return False
             return False
         else:
-            if self.leader == address_id and self.prepared_messages == 2 * f + 1:
-               self.all.append(recvied_message)
-               return True
-            else:
-               return False
-           
-        return False
+            address_id=recvied_message["Header"]["generator_id"]
+            actual_timestamp=self.top_block['Header']['timestamp']
+            timestamp = recvied_message["timestamp"]=self.gen_time()
+            if actual_timestamp >= timestamp: 
+                if self.leader == address_id and self.prepared_messages == self.get_f:
+                
+                    for database in self.local_database:
+                        database['COMMIT']['vote']+=3
+                        database['COMMIT']['time']=timestamp
+                    return True
+                else:
+                     return False
+            
+            return False
            
                         
         #if status =="preprepare"

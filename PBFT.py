@@ -198,9 +198,12 @@ class Node():
         self.stable_checkpoint_validators = [] # list of nodes that voted for the last stable checkpoint
         self.h = 0 # The low water mark = sequence number of the last stable checkpoint
         self.H = self.h + 200 # The high watermark, proposed value in the original article
-        self.accepted_requests_time = {} # This is a dictionary of the accepted preprepare messages with the time they were accepted so that one the timer is reached, the node starts a wiew change. The dictionary has the form : {"request":starting_time...}. the request is discarded once it is executed.
-        self.replies_time = {} # This is a dictionary of the accepted preprepare messages with the time they were replied to. The dictionary has the form : {"request": ["reply",replying_time]...}. the request is discarded once it is executed.
-        self.received_view_changes = {} # Dictionary of received view-change messages (+ the view change the node itself sent) if the node is the primary node in the new view, it has the form: {new_view_number:[list_of_view_change_messages]}
+        self.accepted_requests_time = {} # This is a dictionary of the accepted preprepare messages with the time 
+                                         #they were accepted so that one the timer is reached, the node starts a wiew change. The dictionary has the form : {"request":starting_time...}. the request is discarded once it is executed.
+        self.replies_time = {} # This is a dictionary of the accepted preprepare messages with the time 
+                              #they were replied to. The dictionary has the form : {"request": ["reply",replying_time]...}. the request is discarded once it is executed.
+        self.received_view_changes = {} # Dictionary of received view-change messages (+ the view change the node itself sent)
+                                        #if the node is the primary node in the new view, it has the form: {new_view_number:[list_of_view_change_messages]}
         self.asked_view_change = [] # view numbers the node asked for
 
 def process_received_message(self,received_message,waiting_time):
