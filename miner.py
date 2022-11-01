@@ -120,7 +120,7 @@ class Miner:
             new_block['Header']['generator_id'] == 'The Network')
         if condition_1:
             self.add(new_block, blockchain_function,
-                     expected_chain_length, miner_list)
+                     expected_chain_length, miner_list,type_of_consensus)
         else:
             if self.gossiping:
                 self.gossip(blockchain_function, miner_list)
@@ -133,7 +133,7 @@ class Miner:
                     break
             if not block_already_received and new_consensus_module.block_is_valid(type_of_consensus, new_block, self.top_block, self.next_pos_block_from, miner_list, self.delegates):
                 self.add(new_block, blockchain_function,
-                         expected_chain_length, miner_list)
+                         expected_chain_length, miner_list,type_of_consensus)
                 time.sleep(self.trans_delay)
                 for elem in miner_list:
                     if elem.address in self.neighbours:
@@ -172,8 +172,7 @@ class Miner:
         
       
 
-    def bft_respond(self,block):    # sourcery skip: avoid-builtin-shadow
-        #if redayy True:
+    def bft_respond(self,block,list_of_miners):    
         recvied_message = block['Header']['status']
         if recvied_message =="PREPREPARE":
             last_block=self.preprepare[len(self.preprepare)-1]
@@ -196,76 +195,46 @@ class Miner:
             tuple = (view,recvied_message["sequence_number"])
             address_id = recvied_message["generator_id"]
             if ((recvied_message["view_number"]==self.view_number)): 
-                    self.message_log.append(recvied_message)
-                    if (tuple not in self.prepares):
-                        self.prepares[tuple]=[address_id]
-                    else:
-                        if (address_id not in self.prepares[tuple]):
-                            self.prepares[tuple].append(address_id)
-            
-            p=0
-            for message in self.message_log:
-                    if ((message["message_type"]=="PREPREPARE") and 
-                        (message["view_number"]==recvied_message["view_number"]) and 
-                        (message["sequence_number"]==recvied_message["sequence_number"]) 
-                        ):
-                        p = 1
-                        break
-            if (p==1 and len(self.prepares[tuple])==(2*f)): # The 2*f received messages 
+                self.message_log.append(recvied_message)
+                if (tuple not in self.prepares):
+                    self.prepares[tuple]=[address_id]
+                elif (address_id not in self.prepares[tuple]):
+                    self.prepares[tuple].append(address_id)
+
+            p = next((1 for message in self.message_log if ((message["status"] == "PREPREPARE")
+                                                            and (message["view_number"] == recvied_message["view_number"])
+                                                            and (message["sequence_number"] == recvied_message["sequence_number"]))), 0)
+
+            if (p==1 and len(self.prepares[tuple])==(2*f)): #  received messages 
                     self.prepared_messages.append(recvied_message)
-                    
+
         elif recvied_message == "COMMIT":
-            last_block=self.prepare[len(self.prepare)-1]
+            last_block=self.prepares[len(self.prepares)-1]
             previous_hash= encryption_module.hashing_function(last_block)
             view=recvied_message["view_number"]
             time=recvied_message["timestamp"]
             tuple = (view,recvied_message["sequence_number"])
             address_id = recvied_message["generator_id"]
-        
+            if (self.view_number == recvied_message["view_number"]):
+                    self.message_log.append(recvied_message)
+                    tuple = (recvied_message["view_number"],recvied_message["sequence_number"],recvied_message["previous_hash"])
+                    if (tuple not in self.commits):
+                        self.commits[tuple]=1
+                    else:
+                        self.commits[tuple]=self.commits[tuple]+1
                 
-        def check_preprepare(self,recvied_message):
-            if recvied_message != "PREPREPARE" or recvied_message["view_number"] != self.view_number:
-                return False
-            last_block=self.preprepare[len(self.preprepare)-1]
-            previous_hash=encryption_module.hashing_function(last_block)
-
-            if recvied_message['Header']['hash'] != previous_hash:
-                return False
-
-            elif recvied_message["Header"]["timestamp"] < time.time():
-                return False
-            return True              
-        if check_preprepare(self,recvied_message):
-            recvied_message = self.prepared_messages
-            self.preprepare_messages.append(recvied_message)
-            return True
-        else: 
-            return False
-        
-            
-        
-        # elif recvied_message['hash'] != encryption_module.hashing_function(self.prepared_messages)
-        #     address_id=block['Header']['generator_id']
-        #     digest=block['Header']['hash']
-        #     hash=encryption_module.hashing_function(digest)
-        #     requests_digest = recvied_message["request_digest"]
-        #     total_processed_messages += 1
-        #     self.processed_messages[address_id] += 1
-        #     timestamp = recvied_message["timestamp"]
-        #     view = recvied_message["view_number"]
-        #     if ((digest==requests_digest) and (view==self.view_number)): 
-        #         if request not in self.accepted_requests_time:
-        #                 self.accepted_requests_time[request] = generate_time()
-        #         if tuple not in self.preprepares:
-        #                 self.message_log.append(received_message)
-        #                 self.preprepares[tuple]=digest 
-            
+                    if (self.commits[tuple]==(2*f+1) and (tuple in self.prepares)):
+                        for elm in list_of_miners:
+                            if elm.address == address_id:
+                             self.message_log.append(recvied_message)
+                             
+                        
         #if status =="preprepare"
         #main part algorithm should 
         #if type comiit  
             #if the miner was leader it is need to add mnig is block
     
-    def add(self, block, blockchain_function, expected_chain_length, list_of_miners):
+    def add(self, block, blockchain_function, expected_chain_length, list_of_miners,type_of_consensus):
         ready = False
         local_chain_temporary_file = modification.read_file(f"temporary/{self.address}_local_chain.json")
 
@@ -275,13 +244,13 @@ class Miner:
             condition = blockchain_function == 3 and self.validate_transactions(
                 block['Body']['transactions'], "receiver")
             if (blockchain_function != 3 or condition) and block['Body']['previous_hash'] == self.top_block['Header']['hash']:
-                #if type_of_consensus == 6:
-                    #ready = bft_respond()
-                #else:
-                blockchain.report_a_successful_block_addition(
-                block['Header']['generator_id'], block['Header']['hash'])
-                # output.block_success_addition(self.address, block['generator_id'])
-                ready = True
+                if type_of_consensus == 6:
+                    ready = self.bft_respond(block,list_of_miners)
+                else:
+                    blockchain.report_a_successful_block_addition(
+                    block['Header']['generator_id'], block['Header']['hash'])
+                    # output.block_success_addition(self.address, block['generator_id'])
+                    ready = True
         if ready:
             block['Header']['blockNo'] = len(local_chain_temporary_file)
             self.top_block = block
