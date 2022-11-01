@@ -1,7 +1,4 @@
-from ast import If
-from email import message
 import blockchain
-import json
 import time
 import new_consensus_module
 import output
@@ -34,7 +31,7 @@ class Miner:
         self.replies = {}
         self.message_reply = []  # List of all the reply messages
         # Dictionary of accepted prepare messages: prepares = {(view_number,sequence_number,digest):[different_nodes_that_replied]}
-        self.prepares = {}
+        self.all = {}
         self.preprepare=[] #local chain
         # Dictionary of accepted commit messages: commits = {(view_number,sequence_number,digest):[different_nodes_that_replied]}
         self.commits = {}
@@ -60,7 +57,10 @@ class Miner:
         # Dictionary of received view-change messages (+ the view change the node itself sent) if the node is the primary node in the new view, it has the form: {new_view_number:[list_of_view_change_messages]}
         self.received_view_changes = {}
         self.asked_view_change = []  # view numbers the node asked for
-
+        global n
+        n=0
+        global f
+        f = (n - 1) // 3
         # handlers
 
     def build_block(self, num_of_tx_per_block, mempool, miner_list, type_of_consensus, blockchain_function, expected_chain_length, AI_assisted_mining_wanted):
@@ -105,7 +105,8 @@ class Miner:
            
             new_block['Header']['status'] = 'PREPREPARE'
             self.preprepares[new_block['Header']['hash']]={'prepare':0,
-                                                           'commit':0,'time':time.time()}
+                                                           'commit':0,
+                                                           'time':time.time()}
             
         return new_block
     
@@ -167,75 +168,38 @@ class Miner:
         
         
     
-        global f
-        f = 2/3
+        
         
       
 
-    def bft_respond(self,block,list_of_miners):    
+    def bft_respond(self,block,list_of_miners):  
+        
         recvied_message = block['Header']['status']
-        if recvied_message =="PREPREPARE":
-            last_block=self.preprepare[len(self.preprepare)-1]
-            previous_hash= encryption_module.hashing_function(last_block)
-            view=recvied_message["view_number"]
-            time=recvied_message["timestamp"]
-            tuple = (view,recvied_message["sequence_number"])
-            if(last_block==previous_hash) or(view ==self.view_number):
-                self.accepted_requests_time["request"]=time.time()
-            elif tuple not in self.preprepare:
-                self.prepared_messages.append(recvied_message)
-                self.preprepare[tuple]=previous_hash 
-            else:
-                return False
-        elif recvied_message == "PREPARE":
-            last_block=self.preprepare[len(self.preprepare)-1]
-            previous_hash= encryption_module.hashing_function(last_block)
-            view=recvied_message["view_number"]
-            time=recvied_message["timestamp"]
-            tuple = (view,recvied_message["sequence_number"])
-            address_id = recvied_message["generator_id"]
-            if ((recvied_message["view_number"]==self.view_number)): 
-                self.message_log.append(recvied_message)
-                if (tuple not in self.prepares):
-                    self.prepares[tuple]=[address_id]
-                elif (address_id not in self.prepares[tuple]):
-                    self.prepares[tuple].append(address_id)
-
-            p = next((1 for message in self.message_log if ((message["status"] == "PREPREPARE")
-                                                            and (message["view_number"] == recvied_message["view_number"])
-                                                            and (message["sequence_number"] == recvied_message["sequence_number"]))), 0)
-
-            if (p==1 and len(self.prepares[tuple])==(2*f)): #  received messages 
-                    self.prepared_messages.append(recvied_message)
-            if len(self.prepared_messages) > f *(len(list_of_miners)-1) and (recvied_message == "PREPARE"):
-                self.prepares.append(recvied_message)
-
-
-        elif recvied_message == "COMMIT":
-            last_block=self.prepares[len(self.prepares)-1]
-            previous_hash= encryption_module.hashing_function(last_block)
-            view=recvied_message["view_number"]
-            time=recvied_message["timestamp"]
-            tuple = (view,recvied_message["sequence_number"])
-            address_id = recvied_message["generator_id"]
-            if self.view_number != recvied_message["view_number"]:
-                return False
-            self.message_log.append(recvied_message)
-            tuple = (recvied_message["view_number"],recvied_message["sequence_number"],recvied_message["previous_hash"])
-            self.commits[tuple] = 1 if (tuple not in self.commits) else self.commits[tuple] + 1
-
-            if self.commits[tuple] != 2 * f + 1 or tuple not in self.prepares:
-                return False
-            if len(self.prepared_messages) <= f * (len(list_of_miners) - 1) or recvied_message != "COMMIT":
-                return False
-            self.message_log.append(recvied_message)
-            for elm in list_of_miners:
-                if elm.address == address_id:
-                   commit= self.message_log.append(recvied_message)
-                return commit
-        else:
+        if recvied_message !="PREPREPARE" and recvied_message["view"] != self.view_number or recvied_message["timestamp"] >= time.time():
             return False
-                             
+        elif  recvied_message =="PREPREPARE":
+             address_id=recvied_message["Header"]["generator_id"]
+             hash= recvied_message["Header"]["Hash"]
+             digest=encryption_module.hashing_function(hash)            
+             self.all.append(recvied_message)
+        elif recvied_message !="PREPARE" and recvied_message["view"] != self.view_number or recvied_message["timestamp"] >= time.time() or recvied_message["hash"] != digest:
+            return False
+        elif recvied_message =="PREPARE":
+            if len(self.all) > f * (len(list_of_miners) - 1):
+                    self.prepared_messages.append(recvied_message)
+        elif recvied_message !="Commit" and recvied_message["view"] != self.view_number or recvied_message["timestamp"] >= time.time() or recvied_message["hash"] != digest:
+            if self.prepared_messages != 2 * f + 1:
+                 return False
+            return False
+        else:
+            if self.leader == address_id and self.prepared_messages == 2 * f + 1:
+               self.all.append(recvied_message)
+               return True
+            else:
+               return False
+           
+        return False
+           
                         
         #if status =="preprepare"
         #main part algorithm should 
