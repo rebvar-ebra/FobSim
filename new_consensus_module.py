@@ -179,12 +179,12 @@ def trigger_bft_miners(the_miners_list, the_type_of_consensus, expected_chain_le
         for obj in the_miners_list:
             
             if obj.leader == obj.address: 
-                    if len(obj.commits)-1 == obj.top_block:
+                   # if len(obj.commits)-1 == obj.top_block:
                         obj.build_block(
                                 numOfTXperBlock, mempool.MemPool, the_miners_list, the_type_of_consensus, blockchainFunction,
                                 expected_chain_length, None)
                         Number_of_confirm_blocks=+1
-                    else:
+                    #else:
                        # time.sleep(1)
                     
               

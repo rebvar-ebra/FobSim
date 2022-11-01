@@ -2,7 +2,7 @@
     "0": {
         "Header": {
             "generator_id": "The Network",
-            "hash": "081acef226b154e305e38aebe96a05203a70c958713e31e3cfc5a3074202c3d7",
+            "hash": "04cd1518ab854e016f217b0c7b8758d1543241bb79b1ea5d5152ebce782b821a",
             "blockNo": 0,
             "BFT": ""
         },
@@ -16,7 +16,7 @@
             ],
             "nonce": 0,
             "previous_hash": 0,
-            "timestamp": 1667300222.464948
+            "timestamp": 1667304170.843695
         }
     }
 }

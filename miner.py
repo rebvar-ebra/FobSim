@@ -183,7 +183,7 @@ class Miner:
             if(last_block==previous_hash) or(view ==self.view_number):
                 self.accepted_requests_time["request"]=time.time()
             elif tuple not in self.preprepare:
-                self.message_log.append(recvied_message)
+                self.prepared_messages.append(recvied_message)
                 self.preprepare[tuple]=previous_hash 
             else:
                 return False
@@ -207,6 +207,9 @@ class Miner:
 
             if (p==1 and len(self.prepares[tuple])==(2*f)): #  received messages 
                     self.prepared_messages.append(recvied_message)
+            if len(self.prepared_messages) > f *(len(list_of_miners)-1) and (recvied_message == "PREPARE"):
+                self.prepares.append(recvied_message)
+
 
         elif recvied_message == "COMMIT":
             last_block=self.prepares[len(self.prepares)-1]
@@ -215,18 +218,23 @@ class Miner:
             time=recvied_message["timestamp"]
             tuple = (view,recvied_message["sequence_number"])
             address_id = recvied_message["generator_id"]
-            if (self.view_number == recvied_message["view_number"]):
-                    self.message_log.append(recvied_message)
-                    tuple = (recvied_message["view_number"],recvied_message["sequence_number"],recvied_message["previous_hash"])
-                    if (tuple not in self.commits):
-                        self.commits[tuple]=1
-                    else:
-                        self.commits[tuple]=self.commits[tuple]+1
-                
-                    if (self.commits[tuple]==(2*f+1) and (tuple in self.prepares)):
-                        for elm in list_of_miners:
-                            if elm.address == address_id:
-                             self.message_log.append(recvied_message)
+            if self.view_number != recvied_message["view_number"]:
+                return False
+            self.message_log.append(recvied_message)
+            tuple = (recvied_message["view_number"],recvied_message["sequence_number"],recvied_message["previous_hash"])
+            self.commits[tuple] = 1 if (tuple not in self.commits) else self.commits[tuple] + 1
+
+            if self.commits[tuple] != 2 * f + 1 or tuple not in self.prepares:
+                return False
+            if len(self.prepared_messages) <= f * (len(list_of_miners) - 1) or recvied_message != "COMMIT":
+                return False
+            self.message_log.append(recvied_message)
+            for elm in list_of_miners:
+                if elm.address == address_id:
+                   commit= self.message_log.append(recvied_message)
+                return commit
+        else:
+            return False
                              
                         
         #if status =="preprepare"
@@ -249,8 +257,7 @@ class Miner:
                 else:
                     blockchain.report_a_successful_block_addition(
                     block['Header']['generator_id'], block['Header']['hash'])
-                    # output.block_success_addition(self.address, block['generator_id'])
-                    ready = True
+                    ready=True
         if ready:
             block['Header']['blockNo'] = len(local_chain_temporary_file)
             self.top_block = block
