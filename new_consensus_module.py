@@ -174,19 +174,20 @@ def trigger_dpos_miners(expected_chain_length, the_miners_list, number_of_delega
         
 
 def trigger_bft_miners(the_miners_list, the_type_of_consensus, expected_chain_length, numOfTXperBlock,blockchainFunction):
+    for miner in the_miners_list:
+        if miner.leader == miner.address:
+            leader = miner.address
+            break
     Number_of_confirm_blocks=0
     while Number_of_confirm_blocks < expected_chain_length:
         for obj in the_miners_list:
             
-            if obj.leader == obj.address: 
-                    if len(obj.all)-1 == obj.top_block:
-                        obj.build_block(
-                                numOfTXperBlock, mempool.MemPool, the_miners_list, the_type_of_consensus, blockchainFunction,
-                                expected_chain_length, None)
-                        Number_of_confirm_blocks=+1
-                    else:
-                        
-                        time.sleep(1)
+            if obj.leader == obj.address:
+                    obj.build_block(
+                            numOfTXperBlock, mempool.MemPool, the_miners_list, the_type_of_consensus, blockchainFunction,
+                            expected_chain_length, None)
+                    Number_of_confirm_blocks=+1
+            
                     
               
                         #print("error")

@@ -20,18 +20,10 @@ class Miner:
         self.amount_to_be_staked = None
         self.delegates = None
         self.adversary = False
-        
-        self.local_database={"PREPREAPRE":{"hash_block":{
-                                    'vote':0,
-                                    'timeStamp':0
-                                    }},
-                       "PREPARE":{"hash_block":{
-                                    'vote':0,
-                                    'timeStamp':0
-                    }},"COMMIT":{"hash_block":{
-                                    'vote':0,
-                                    'timeStamp':0
-                                }}}
+        self.waiting=2
+        self.local_database={"PREPREAPRE":{},
+                            "PREPARE":{},
+                            "COMMIT":{}}
 
         self.view_number = 0  # Initiated with 1 and increases with each view change
         self.primary_node_id = self.address
@@ -43,32 +35,10 @@ class Miner:
         self.replies = {}
         self.message_reply = []  # List of all the reply messages
         # Dictionary of accepted prepare messages: prepares = {(view_number,sequence_number,digest):[different_nodes_that_replied]}
-        self.all = {}
         self.preprepare=[] #local chain
         # Dictionary of accepted commit messages: commits = {(view_number,sequence_number,digest):[different_nodes_that_replied]}
         self.commits = {}
         self.message_log = []  # Set of accepted messages
-        # A dictionary that for each client, stores the timestamp of the last reply
-        self.last_reply_timestamp = {}
-        # Dictionary of checkpoints: {checkpoint:[list_of_nodes_that_voted]}
-        self.checkpoints = {}
-        self.status=None
-        processed_messages = []
-        # List of sequence numbers where a checkpoint was proposed
-        self.checkpoints_sequence_number = []
-        self.stable_checkpoint = {"message_type": "CHECKPOINT", "sequence_number": 0,
-                                  "checkpoint_digest": "the_checkpoint_digest", "node_id": self.address}  # The last stable checkpoint
-        # list of nodes that voted for the last stable checkpoint
-        self.stable_checkpoint_validators = []
-        self.h = 0  # The low water mark = sequence number of the last stable checkpoint
-        self.H = self.h + 200  # The high watermark, proposed value in the original article
-        # This is a dictionary of the accepted preprepare messages with the time they were accepted so that one the timer is reached, the node starts a wiew change. The dictionary has the form : {"request":starting_time...}. the request is discarded once it is executed.
-        self.accepted_requests_time = {}
-        # This is a dictionary of the accepted preprepare messages with the time they were replied to. The dictionary has the form : {"request": ["reply",replying_time]...}. the request is discarded once it is executed.
-        self.replies_time = {}
-        # Dictionary of received view-change messages (+ the view change the node itself sent) if the node is the primary node in the new view, it has the form: {new_view_number:[list_of_view_change_messages]}
-        self.received_view_changes = {}
-        self.asked_view_change = []  # view numbers the node asked for
         global n
         n=0
         global f
@@ -182,70 +152,108 @@ class Miner:
     
     def get_f():
         
-        return f
-    def gen_time():
-        return time.time()
+        return 2*f+1
         
-      
+    def block_already_received(self,block, status):
+        result = False
+        
+        for status in self.local_database:
+            if self.local_database[status]['hash_block'] == block['Header']['hash']:
+                return True
+        return result
+                
+                
+    def block_timestamp(self,get_h):
+        return self.local_database['PREPREPARE'][get_h]['timeStamp']
+            
+            
+                  
+                
+        # block_type = block ['Header']['block_hash']
+        # for block in self.local_database[block_type]:
+        #     if block_hash == block['Header']['block_hash']:  
+        #          return False
+        #     else:
+        #         return True
 
-    def bft_respond(self,block,list_of_miners):  
+    def bft_respond(self,block,miner_list,new_block,type_of_consensus, blockchain_function, expected_chain_length):  
         
-        recvied_message = block['Header']['status']
-        
-        
-        if recvied_message !="PREPREPARE" and recvied_message["Header"]['hash'] != self.top_block['Header']['hash']:
-            return False
-        elif  recvied_message =="PREPREPARE":
+        recvied_message = block['Header']['status'] 
+        if  recvied_message =="PREPREPARE":
              address_id=recvied_message["Header"]["generator_id"]
-             actual_timestamp=self.top_block['Header']['timestamp']
-             timestamp = recvied_message["timestamp"]=self.gen_time()
-             if actual_timestamp >= timestamp:
-                 for database in self.local_database:
-                    database['PREPREAPRE']['vote']+=1
-                    database['PREPREAPRE']['time']=timestamp
-             else:
-                 
-                return False             
-             
-        elif recvied_message !="PREPARE" or recvied_message['Header']["hash"] != self.top_block['Header']['hash']or self.top_block['Header']['timestamp']< timestamp:
-            return False
+             get_hash=recvied_message["Header"]['hash']
+             timestamp_difference = recvied_message["timeStamp"] - time.time()
+             if timestamp_difference  <= self.waiting and self.leader == address_id:
+                    
+                    if not self.block_already_received(block, block['Header']['status'] ):
+                        block_info= {'votes':1,
+                                'timeStamp':recvied_message['timeStamp']
+                                    }
+                        self.local_database['PREPARE'][get_hash]=block_info
+                        block_info['votes'] = block_info['votes'] + 1
+                        self.local_database[recvied_message][get_hash] = block_info
+                        
+                        
+                        block['Header']['status']='PREPARE'
+                        for elem in miner_list:
+                            if elem.address in self.neighbours:
+                                elem.receive_new_block(
+                                    block, type_of_consensus, miner_list, blockchain_function, expected_chain_length)
+          
+        
         elif recvied_message =="PREPARE":
             address_id=recvied_message["Header"]["generator_id"]
-            actual_timestamp=self.top_block['Header']['timestamp']
-            timestamp = recvied_message["timestamp"]=self.gen_time()
-            if actual_timestamp >= timestamp and  len(self.local_database) > self.get_f() * (len(list_of_miners) - 1):
-                for database in self.local_database:
-                    database['PREAPRE']['vote']+=2
-                    database['PREAPRE']['time']=timestamp
-            else:
-                 
-                return False 
-               
-        elif recvied_message !="Commit"  or recvied_message["timestamp"] <= self.top_block['Header']['timestamp']:
-            if self.prepared_messages != self.get_f:
-                 return False
-            return False
-        else:
-            address_id=recvied_message["Header"]["generator_id"]
-            actual_timestamp=self.top_block['Header']['timestamp']
-            timestamp = recvied_message["timestamp"]=self.gen_time()
-            if actual_timestamp >= timestamp: 
-                if self.leader == address_id and self.prepared_messages == self.get_f:
+            get_hash=recvied_message["Header"]['hash']
+            timestamp_difference = self.block_timestamp(get_hash) - time.time()
+            if timestamp_difference  <= self.waiting and self.leader == address_id:
                 
-                    for database in self.local_database:
-                        database['COMMIT']['vote']+=3
-                        database['COMMIT']['time']=timestamp
-                    return True
-                else:
-                     return False
-            
-            return False
-           
+                #check
+                if get_hash in self.local_database['PREPARE']:
+                    self.local_database['PREPARE'][get_hash]['votes'] += 1 
+                    if len(self.local_database['PREPARE'][get_hash]['votes']) > self.get_f() * len(miner_list)-1:
+                        block_info= {'votes':1,
+                                'timeStamp':recvied_message['timeStamp']
+                                    }
+                        block_info= {'votes':1,
+                                'timeStamp':recvied_message['timeStamp']
+                                    }
+                        self.local_database['COMMIT'][get_hash]=block_info
+                        block_info['votes'] = block_info['votes'] + 1
+                        self.local_database[recvied_message][get_hash] = block_info
                         
-        #if status =="preprepare"
-        #main part algorithm should 
-        #if type comiit  
-            #if the miner was leader it is need to add mnig is block
+                        
+                        block['Header']['status']='COMMIT'
+                        for elem in miner_list:
+                            if elem.address in self.neighbours:
+                                elem.receive_new_block(
+                                    block, type_of_consensus, miner_list, blockchain_function, expected_chain_length)
+                    
+                        
+        else:
+            recvied_message =="COMMIT"
+            address_id=recvied_message["Header"]["generator_id"]
+            get_hash=recvied_message["Header"]['hash']
+            timestamp_difference = self.block_timestamp(get_hash) - time.time()
+            if timestamp_difference  <= self.waiting and self.leader == address_id:
+                
+                #check
+                if get_hash in self.local_database['COMMIT']:
+                    self.local_database['COMMIT'][get_hash]['votes'] += 1 
+                    if len(self.local_database['COMMIT'][get_hash]['votes']) > self.get_f() * len(miner_list)-1:
+                       self.add()
+                        
+                       if self.leader == self.address:
+                           pass
+                       else:
+                            for elem in miner_list:
+                                if elem.address ==self.leader:
+                                    elem.receive_new_block(
+                                        block, type_of_consensus, miner_list, blockchain_function, expected_chain_length) 
+                                    break
+            
+                        
+                            
+  
     
     def add(self, block, blockchain_function, expected_chain_length, list_of_miners,type_of_consensus):
         ready = False

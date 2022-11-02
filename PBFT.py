@@ -203,7 +203,7 @@ class Node():
         self.replies_time = {} # This is a dictionary of the accepted preprepare messages with the time 
                               #they were replied to. The dictionary has the form : {"request": ["reply",replying_time]...}. the request is discarded once it is executed.
         self.received_view_changes = {} # Dictionary of received view-change messages (+ the view change the node itself sent)
-                                        #if the node is the primary node in the new view, it has the form: {new_view_number:[list_of_view_change_messages]}
+                                    #if the node is the primary node in the new view, it has the form: {new_view_number:[list_of_view_change_messages]}
         self.asked_view_change = [] # view numbers the node asked for
 
 def process_received_message(self,received_message,waiting_time):
@@ -289,7 +289,8 @@ def process_received_message(self,received_message,waiting_time):
                     if ((message["message_type"]=="PREPREPARE") and (message["view_number"]==received_message["view_number"]) and (message["sequence_number"]==received_message["sequence_number"]) and (message["request"]==received_message["request"])):
                         p = 1
                         break
-                # Second condition: Making sure the node inserted in its message log: 2f prepares from different backups that match the pre-preapare (same view, same sequence number and same digest)
+                # Second condition: Making sure the node inserted in its message log: 
+                # 2f prepares from different backups that match the pre-preapare (same view, same sequence number and same digest)
                 #print(len(self.prepares[tuple]))
                 if (p==1 and len(self.prepares[tuple])==(2*f)): # The 2*f received messages also include the node's own received message
                     self.prepared_messages.append(received_message)
