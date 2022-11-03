@@ -243,8 +243,8 @@ def select_leader(list_of_miners):
     selected_miner = random.choice(list_of_miners).address
     for entity in list_of_miners:
         entity.leader = selected_miner 
-        entity.number_of_miners = len(list_of_miners)#
-        entity.number_of_tolerated_adversaries = entity.number_of_miners /3 
+        entity.number_of_miners = len(list_of_miners)
+        entity.number_of_tolerated_adversaries = entity.number_of_miners / 3
         
         
     return list_of_miners 
@@ -287,7 +287,7 @@ if __name__ == '__main__':
     else:
         miner_list=select_leader(miner_list)
         print("print miners init",miner_list)
-        AI_assisted_mining_wanted=give_miners_authorization(miner_list,type_of_consensus)
+        AI_assisted_mining_wanted=give_miners_authorization(miner_list, type_of_consensus)
         initiate_genesis_block(miner_list)
         send_tasks_to_BC() 
         new_consensus_module.miners_trigger(miner_list, type_of_consensus, expected_chain_length, Parallel_PoW_mining,

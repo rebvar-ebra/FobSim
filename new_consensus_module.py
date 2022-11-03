@@ -178,23 +178,13 @@ def trigger_bft_miners(the_miners_list, the_type_of_consensus, expected_chain_le
         if miner.leader == miner.address:
             leader = miner.address
             break
-    Number_of_confirm_blocks=0
+    Number_of_confirm_blocks = 0
     while Number_of_confirm_blocks < expected_chain_length:
         for obj in the_miners_list:
-            
-            if obj.leader == obj.address:
-                    obj.build_block(
-                            numOfTXperBlock, mempool.MemPool, the_miners_list, the_type_of_consensus, blockchainFunction,
-                            expected_chain_length, None)
-                    Number_of_confirm_blocks=+1
-            
-                    
-              
-                        #print("error")
-                        
-                         #print("  \t" "\n",obj.__dict__)
-    
-    
+            if leader == obj.address:
+                obj.build_block(
+                        numOfTXperBlock, mempool.MemPool, the_miners_list, the_type_of_consensus, blockchainFunction,
+                        expected_chain_length, None)
     
 def pow_mining(block, AI_assisted_mining_wanted, is_adversary):
     while True:
@@ -303,12 +293,12 @@ def dpos_block_is_valid(new_block, delegates, expected_previous_hash):
         pass
     return False
 
-def bft_block_is_valid(new_block,expected_previous_hash,miner_list):
-    with contextlib.suppress(Exception):
-        condition1=new_block['Header']['Previous_hash']==expected_previous_hash
-        condition2=new_block['Header']['hash']==encryption_module.retrieve_signature_from_saved_key(new_block['Header']['previous_hash'],miner_list)
-        if condition1 and condition2:
-            return True
+
+def bft_block_is_valid(new_block, miner_list, expected_previous_hash):
+    condition1 = new_block['Body']['previous_hash'] == expected_previous_hash
+    condition2 = new_block['Header']['hash'] == encryption_module.hashing_function(new_block['Body'])
+    if condition1 and condition2:
+        return True
     return False
 
 
@@ -361,7 +351,7 @@ def generate_new_block(transactions, generator_id, previous_hash, type_of_consen
     if type_of_consensus == 5:
         new_block['Header']['dummy_new_proof'] = dummy_proof_generator_function(new_block)
     if type_of_consensus ==6:
-        new_block['Header']['BFT']= ""
+        new_block['Header']['status']= "PREPREPARE"
         
     return new_block
 
@@ -420,7 +410,7 @@ def block_is_valid(type_of_consensus, new_block, top_block, next_pos_block_from,
     if type_of_consensus == 5:
         return dpos_block_is_valid(new_block, delegates, top_block['Header']['hash'])
     if type_of_consensus ==6:
-        return bft_block_is_valid(new_block,miner_list,top_block['Header']['hash'])
+        return bft_block_is_valid(new_block, miner_list, top_block['Header']['hash'])
         
     if type_of_consensus == 7:
         return dummy_block_is_valid(new_block)
