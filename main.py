@@ -276,7 +276,7 @@ if __name__ == '__main__':
             expected_chain_length = ceil((num_of_users_per_fog_node * NumOfTaskPerUser * NumOfFogNodes))
         new_consensus_module.miners_trigger(miner_list, type_of_consensus, expected_chain_length, Parallel_PoW_mining,
                                             numOfTXperBlock, blockchainFunction, poet_block_time, Asymmetric_key_length,
-                                            number_of_DPoS_delegates, AI_assisted_mining_wanted,False)
+                                            number_of_DPoS_delegates, AI_assisted_mining_wanted)
 
         blockchain.award_winning_miners(len(miner_list), miner_list)
         blockchain.fork_analysis(miner_list)
@@ -294,6 +294,6 @@ if __name__ == '__main__':
                                             numOfTXperBlock, blockchainFunction, poet_block_time, Asymmetric_key_length,
                                             number_of_DPoS_delegates, AI_assisted_mining_wanted)
 
-        #blockchain.award_winning_miners(len(miner_list), miner_list)
-        #blockchain.fork_analysis(miner_list)
+        blockchain.award_winning_miners(len(miner_list), miner_list)
+        blockchain.fork_analysis(miner_list)
         output.finish()

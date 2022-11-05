@@ -294,7 +294,7 @@ def dpos_block_is_valid(new_block, delegates, expected_previous_hash):
     return False
 
 
-def bft_block_is_valid(new_block, miner_list, expected_previous_hash):
+def bft_block_is_valid(new_block, expected_previous_hash):
     condition1 = new_block['Body']['previous_hash'] == expected_previous_hash
     condition2 = new_block['Header']['hash'] == encryption_module.hashing_function(new_block['Body'])
     if condition1 and condition2:
@@ -374,7 +374,6 @@ def miners_trigger(the_miners_list, the_type_of_consensus, expected_chain_length
     if the_type_of_consensus ==6:
         #print('trigger bft')
         trigger_bft_miners(the_miners_list, the_type_of_consensus, expected_chain_length, numOfTXperBlock,blockchainFunction)
-        #print(  "(the_miners_list, the_type_of_consensus",the_miners_list, the_type_of_consensus        )
     if the_type_of_consensus == 7:
         trigger_dummy_miners(the_miners_list, numOfTXperBlock, the_type_of_consensus, blockchainFunction, expected_chain_length)
     
@@ -410,7 +409,7 @@ def block_is_valid(type_of_consensus, new_block, top_block, next_pos_block_from,
     if type_of_consensus == 5:
         return dpos_block_is_valid(new_block, delegates, top_block['Header']['hash'])
     if type_of_consensus ==6:
-        return bft_block_is_valid(new_block, miner_list, top_block['Header']['hash'])
+        return bft_block_is_valid(new_block, top_block['Header']['hash'])
         
     if type_of_consensus == 7:
         return dummy_block_is_valid(new_block)

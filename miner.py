@@ -22,9 +22,9 @@ class Miner:
         self.adversary = False
         self.waiting = 2
         self.leader = None
-        self.local_database = {'PREPREPARE': {},
-                               'PREPARE': {},
-                               'COMMIT': {}}
+        self.local_database = {"PREPREPARE": {},
+                               "PREPARE": {},
+                               "COMMIT": {}}
 
         self.primary_node_id = self.address
         global n
@@ -150,75 +150,58 @@ class Miner:
             timestamp_difference = new_block['Body']['timestamp'] - time.time()
             if timestamp_difference <= self.waiting and self.leader == address_id:
 
-
-                if not self.block_already_received(new_block, new_block['Header']['status']):
+                if get_hash in self.local_database['PREPREPARE']:
+                    self.local_database['PREPREPARE'][get_hash]['votes'] += 1
+                if not self.block_received(new_block, new_block['Header']['status']):
                     block_info = {'votes': 2,
                                   'timestamp': new_block['Body']['timestamp']
                                   }
                     self.local_database['PREPARE'][get_hash] = block_info
                     block_info['votes'] = block_info['votes'] + 1
                     self.local_database[recvied_message][get_hash] = block_info
-
-                else:
-                    block_info = {'votes': 0,
-                                  'timestamp': new_block['Body']['timestamp']
-                                  }
-                    block_info['votes'] = block_info['votes'] + 1
-                    self.local_database[recvied_message][get_hash] = block_info
-
                     new_block['Header']['status'] = 'PREPARE'
-
-                    for elem in miner_list:
-                        if elem.leader in self.neighbours:
-                            elem.receive_new_block(
-                                new_block, 6,miner_list, blockchain_function, expected_chain_length)
-
+                    for miner in miner_list:
+                        if miner.address in self.neighbours:
+                            miner.receive_new_block(
+                                new_block,6,miner_list, blockchain_function, expected_chain_length)
         elif recvied_message == 'PREPARE':
             address_id = new_block['Header']['generator_id']
             get_hash = new_block['Header']['hash']
             timestamp_difference = self.block_timestamp(get_hash) - time.time()
-            if timestamp_difference <= self.waiting and self.leader == address_id:
+            if timestamp_difference <= self.waiting and self.leader == address_id and get_hash in self.local_database['PREPARE']:
+                self.local_database['PREPARE'][get_hash]['votes'] += 1
+                if len(self.local_database['PREPARE'][get_hash]['votes']) > self.get_f() * len(miner_list) - 1:
 
-                # check
-                if get_hash in self.local_database['PREPARE']:
-                    self.local_database['PREPARE'][get_hash]['votes'] += 1
-                    if len(self.local_database['PREPARE'][get_hash]['votes']) > self.get_f() * len(miner_list) - 1:
+                    block_info = {'votes': 1,
+                                  'timestamp': new_block['Body']['timestamp']
+                                  }
+                    self.local_database['COMMIT'][get_hash] = block_info
+                    block_info['votes'] = block_info['votes'] + 1
+                    self.local_database[recvied_message][get_hash] = block_info
 
-                        block_info = {'votes': 1,
-                                      'timestamp': new_block['Body']['timestamp']
-                                      }
-                        self.local_database['COMMIT'][get_hash] = block_info
-                        block_info['votes'] = block_info['votes'] + 1
-                        self.local_database[recvied_message][get_hash] = block_info
-
-                        new_block['Header']['status'] = 'COMMIT'
-                        for elem in miner_list:
-                            if elem.address in self.neighbours:
-                                elem.receive_new_block(
-                                    new_block, 6, miner_list, blockchain_function, expected_chain_length)
+                    new_block['Header']['status'] = 'COMMIT'
+                    for elem in miner_list:
+                        if elem.address in self.neighbours:
+                            elem.receive_new_block(
+                                new_block, 6, miner_list, blockchain_function, expected_chain_length)
         elif recvied_message == 'COMMIT':
             address_id = new_block['Header']['generator_id']
             get_hash = new_block['Header']['hash']
             timestamp_difference = self.block_timestamp(get_hash) - time.time()
-            if timestamp_difference <= self.waiting and self.leader == address_id:
+            if timestamp_difference <= self.waiting and self.leader == address_id and get_hash in self.local_database['COMMIT']:
+                self.local_database['COMMIT'][get_hash]['votes'] += 1
+                if len(self.local_database['COMMIT'][get_hash]['votes']) > self.get_f() * len(miner_list) - 1:
+                    self.add(new_block, blockchain_function, expected_chain_length, miner_list, 6)
 
-                # check
-                if get_hash in self.local_database['COMMIT']:
-                    self.local_database['COMMIT'][get_hash]['votes'] += 1
-                    if len(self.local_database['COMMIT'][get_hash]['votes']) > self.get_f() * len(miner_list) - 1:
-                        self.add(new_block, blockchain_function, expected_chain_length, miner_list, 6)
-
-                        if self.leader == self.address:
-                            pass
-                        else:
-                            for elem in miner_list:
-                                if elem.address == self.leader:
-                                    elem.receive_new_block(
-                                        new_block, 6, miner_list, blockchain_function, expected_chain_length)
-                                    break
+                    if self.leader != self.address:
+                        for elem in miner_list:
+                            if elem.address == self.leader:
+                                elem.receive_new_block(
+                                    new_block, 6, miner_list, blockchain_function, expected_chain_length)
+                                break
 
 
-    def block_already_received(self, new_block, status):
+    def block_received(self, new_block, status):
         result = False
 
         for status in self.local_database:
@@ -229,7 +212,8 @@ class Miner:
                 return result
 
     def block_timestamp(self, get_h):
-        return self.local_database['PREPREPARE'][get_h]["timestamp"]
+
+        return self.local_database['PREPREPARE'][get_h]['timestamp']
 
 
     def add(self, block, blockchain_function, expected_chain_length, list_of_miners, type_of_consensus):
@@ -244,13 +228,17 @@ class Miner:
             if (blockchain_function != 3 or condition) and block['Body']['previous_hash'] == self.top_block['Header'][
                 'hash']:
                 if type_of_consensus == 6:
-                    ready = self.bft_respond(block, list_of_miners, blockchain_function, expected_chain_length)
+
+                    self.bft_respond(block,list_of_miners,blockchain_function,expected_chain_length)
+
+
                 else:
                     blockchain.report_a_successful_block_addition(
                         block['Header']['generator_id'], block['Header']['hash'])
                     ready = True
         if ready:
             block['Header']['blockNo'] = len(local_chain_temporary_file)
+
             self.top_block = block
             local_chain_temporary_file[str(
                 len(local_chain_temporary_file))] = block
@@ -259,6 +247,8 @@ class Miner:
             if self.gossiping:
                 self.update_global_longest_chain(
                     local_chain_temporary_file, blockchain_function, list_of_miners)
+
+
 
     def gossip(self, blockchain_function, list_of_miners):
         local_chain_temporary_file = modification.read_file(str(f"temporary/{self.address}_local_chain.json"))
