@@ -167,6 +167,10 @@ class Miner:
                             if miner.address in self.neighbours:
                                 miner.receive_new_block(
                                     new_block,6,miner_list, blockchain_function, expected_chain_length)
+                    else:
+                        ready = False
+                        self.local_database['PREPREPARE'][get_hash]['votes'] += 1
+                        return ready
             elif recvied_message == 'PREPARE':
                 address_id = new_block['Header']['generator_id']
                 get_hash = new_block['Header']['hash']
@@ -194,7 +198,10 @@ class Miner:
                 if timestamp_difference <= self.waiting and self.leader == address_id and get_hash in self.local_database['COMMIT']:
                     self.local_database['COMMIT'][get_hash]['votes'] += 1
                     if len(self.local_database['COMMIT'][get_hash]['votes']) > self.get_f() * len(miner_list) - 1:
-                        self.add(new_block, blockchain_function, expected_chain_length, miner_list, 6)
+                        if get_hash not in self.local_database['COMMIT']:
+                            self.add(new_block, blockchain_function, expected_chain_length, miner_list, 6)
+                        else:
+                            self.local_database['COMMIT'][get_hash]['votes'] += 1
 
                         if self.leader != self.address:
                             for elem in miner_list:
