@@ -143,11 +143,9 @@ class Miner:
 
     def bft_respond(self, new_block, miner_list, blockchain_function, expected_chain_length):
         ready = False
-        block = new_block['Header']['status']
-        if block == new_block['Header']['status']:
-            ready =True
-            recvied_message = new_block['Header']['status']
-            if recvied_message == 'PREPREPARE':
+        if expected_chain_length != 0:
+            recevied_message = new_block['Header']['status']
+            if recevied_message == 'PREPREPARE':
                 address_id = new_block['Header']['generator_id']
                 get_hash = new_block['Header']['hash']
                 timestamp_difference = new_block['Body']['timestamp'] - time.time()
@@ -161,17 +159,20 @@ class Miner:
                                       }
                         self.local_database['PREPARE'][get_hash] = block_info
                         block_info['votes'] = block_info['votes'] + 1
-                        self.local_database[recvied_message][get_hash] = block_info
+                        self.local_database[recevied_message][get_hash] = block_info
                         new_block['Header']['status'] = 'PREPARE'
+
+                        
                         for miner in miner_list:
                             if miner.address in self.neighbours:
-                                miner.receive_new_block(
-                                    new_block,6,miner_list, blockchain_function, expected_chain_length)
+                                miner.local_database[recevied_message][get_hash]+block_info
+                                miner.local_database['PREPARE'][get_hash]+block_info
+                               #miner.receive_new_block(new_block,6,miner_list, blockchain_function, expected_chain_length)
                     else:
                         ready = False
                         self.local_database['PREPREPARE'][get_hash]['votes'] += 1
                         return ready
-            elif recvied_message == 'PREPARE':
+            elif recevied_message == 'PREPARE':
                 address_id = new_block['Header']['generator_id']
                 get_hash = new_block['Header']['hash']
                 timestamp_difference = self.block_timestamp(get_hash) - time.time()
@@ -184,14 +185,14 @@ class Miner:
                                       }
                         self.local_database['COMMIT'][get_hash] = block_info
                         block_info['votes'] = block_info['votes'] + 1
-                        self.local_database[recvied_message][get_hash] = block_info
+                        self.local_database[recevied_message][get_hash] = block_info
 
                         new_block['Header']['status'] = 'COMMIT'
                         for elem in miner_list:
                             if elem.address in self.neighbours:
                                 elem.receive_new_block(
                                     new_block, 6, miner_list, blockchain_function, expected_chain_length)
-            elif recvied_message == 'COMMIT':
+            elif recevied_message == 'COMMIT':
                 address_id = new_block['Header']['generator_id']
                 get_hash = new_block['Header']['hash']
                 timestamp_difference = self.block_timestamp(get_hash) - time.time()
@@ -203,12 +204,14 @@ class Miner:
                         else:
                             self.local_database['COMMIT'][get_hash]['votes'] += 1
 
+
                         if self.leader != self.address:
                             for elem in miner_list:
                                 if elem.address == self.leader:
                                     elem.receive_new_block(
                                         new_block, 6, miner_list, blockchain_function, expected_chain_length)
                                     break
+            ready = True
             return ready
         else:
             return False
@@ -244,7 +247,7 @@ class Miner:
 
                     self.bft_respond(block,list_of_miners,blockchain_function,expected_chain_length)
 
-
+                    ready = True
                 else:
                     blockchain.report_a_successful_block_addition(
                         block['Header']['generator_id'], block['Header']['hash'])
