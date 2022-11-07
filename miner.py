@@ -142,36 +142,42 @@ class Miner:
 
 
     def bft_respond(self, new_block, miner_list, blockchain_function, expected_chain_length):
-        ready = False
-        if expected_chain_length != 0:
+
             recevied_message = new_block['Header']['status']
             if recevied_message == 'PREPREPARE':
                 address_id = new_block['Header']['generator_id']
                 get_hash = new_block['Header']['hash']
+                block_info = {'votes': 2,
+                              'timestamp': new_block['Body']['timestamp'],
+                              'broadcast': False
+                              }
                 timestamp_difference = new_block['Body']['timestamp'] - time.time()
-                if timestamp_difference <= self.waiting and self.leader == address_id:
+                if get_hash in self.local_database[recevied_message]:
+                    for broadcast in new_block[recevied_message][get_hash][block_info]:
+                        if broadcast == True:
+                            break
+                        else:
+                            for miner in miner_list:
+                                if miner.address in self.neighbours:
+                                    miner.local_database[recevied_message][get_hash] + block_info
+                                    miner.local_database['PREPARE'][get_hash] + block_info
+                elif timestamp_difference <= self.waiting and self.leader == address_id:
+                    self.block_received(new_block, new_block['Header']['status'])
+                    self.local_database['PREPARE'][get_hash] = block_info
+                    block_info['votes'] = block_info['votes'] + 1
+                    check_brodcat,self.local_database[recevied_message][get_hash] = block_info
 
-                    if get_hash in self.local_database['PREPREPARE']:
-                        self.local_database['PREPREPARE'][get_hash]['votes'] += 1
-                    if not self.block_received(new_block, new_block['Header']['status']):
-                        block_info = {'votes': 2,
-                                      'timestamp': new_block['Body']['timestamp']
-                                      }
-                        self.local_database['PREPARE'][get_hash] = block_info
-                        block_info['votes'] = block_info['votes'] + 1
-                        self.local_database[recevied_message][get_hash] = block_info
-                        new_block['Header']['status'] = 'PREPARE'
+                    new_block['Header']['status'] = 'PREPARE'
 
-                        
-                        for miner in miner_list:
-                            if miner.address in self.neighbours:
-                                miner.local_database[recevied_message][get_hash]+block_info
-                                miner.local_database['PREPARE'][get_hash]+block_info
+                    for brodcast in check_brodcat:
+                        if brodcast == False:
+                            for miner in miner_list:
+                                if miner.address in self.neighbours:
+                                    miner.local_database[recevied_message][get_hash]+block_info
+                                    miner.local_database['PREPARE'][get_hash]+block_info
                                #miner.receive_new_block(new_block,6,miner_list, blockchain_function, expected_chain_length)
-                    else:
-                        ready = False
-                        self.local_database['PREPREPARE'][get_hash]['votes'] += 1
-                        return ready
+                        else:
+                            break
             elif recevied_message == 'PREPARE':
                 address_id = new_block['Header']['generator_id']
                 get_hash = new_block['Header']['hash']
@@ -211,10 +217,6 @@ class Miner:
                                     elem.receive_new_block(
                                         new_block, 6, miner_list, blockchain_function, expected_chain_length)
                                     break
-            ready = True
-            return ready
-        else:
-            return False
 
 
     def block_received(self, new_block, status):
