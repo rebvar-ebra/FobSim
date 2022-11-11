@@ -171,6 +171,9 @@ class Miner:
                                         if miner.address in self.neighbours:
                                             miner.local_database[recevied_message][get_hash] + block_info
                                             miner.local_database['PREPARE'][get_hash] + block_info
+                                            miner.receive_new_block(new_block, 6, miner_list, blockchain_function,
+                                                                    expected_chain_length)
+
                         else:
                             return print("block brodacast before")
 
