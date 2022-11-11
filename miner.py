@@ -152,7 +152,8 @@ class Miner:
 
                 block_info = {'votes': 2,
                               'timestamp': new_block['Body']['timestamp'],
-                              'broadcast': False
+                              'broadcast': False,
+                               'digest':new_block['Header']['digest']
                               }
                 timestamp_difference = new_block['Body']['timestamp'] - time.time()
                 if get_hash in self.local_database[recevied_message]:#check the exist
