@@ -147,20 +147,34 @@ class Miner:
             if recevied_message == 'PREPREPARE':
                 address_id = new_block['Header']['generator_id']
                 get_hash = new_block['Header']['hash']
+                sign=new_block['Header']['digest']
+                
+
                 block_info = {'votes': 2,
                               'timestamp': new_block['Body']['timestamp'],
                               'broadcast': False
                               }
                 timestamp_difference = new_block['Body']['timestamp'] - time.time()
-                if get_hash in self.local_database[recevied_message]:
-                    for broadcast in new_block[recevied_message][get_hash][block_info]:
-                        if broadcast == True:
-                            break
+                if get_hash in self.local_database[recevied_message]:#check the exist
+                    if new_block[recevied_message][get_hash][block_info][sign]==sign:#check vote
+                        return print("you add vote before")
+                    else:
+                        self.block_received(new_block, new_block['Header']['status'])
+                        self.local_database['PREPARE'][get_hash] = block_info
+                        block_info['votes'] = block_info['votes'] + 1
+                        if len(self.local_database[recevied_message][get_hash]['votes']) > self.get_f() * len(miner_list) - 1:
+                            for broadcast in new_block[recevied_message][get_hash][block_info]:
+                                if broadcast == True:
+                                    break
+                                else:
+                                    for miner in miner_list:
+                                        if miner.address in self.neighbours:
+                                            miner.local_database[recevied_message][get_hash] + block_info
+                                            miner.local_database['PREPARE'][get_hash] + block_info
                         else:
-                            for miner in miner_list:
-                                if miner.address in self.neighbours:
-                                    miner.local_database[recevied_message][get_hash] + block_info
-                                    miner.local_database['PREPARE'][get_hash] + block_info
+                            return print("block brodacast before")
+
+
                 elif timestamp_difference <= self.waiting and self.leader == address_id:
                     self.block_received(new_block, new_block['Header']['status'])
                     self.local_database['PREPARE'][get_hash] = block_info
