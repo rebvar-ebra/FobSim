@@ -189,9 +189,11 @@ class Miner:
                                 if miner.address in self.neighbours:
                                     miner.local_database[recevied_message][get_hash]+block_info
                                     miner.local_database['PREPARE'][get_hash]+block_info
-                               #miner.receive_new_block(new_block,6,miner_list, blockchain_function, expected_chain_length)
+                                    miner.receive_new_block(new_block,6,miner_list, blockchain_function, expected_chain_length)
                         else:
-                            break
+                           break
+                else:
+                     print("Something wrong check the status of block")
             elif recevied_message == 'PREPARE':
                 address_id = new_block['Header']['generator_id']
                 get_hash = new_block['Header']['hash']
