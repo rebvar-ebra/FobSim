@@ -351,7 +351,7 @@ def generate_new_block(transactions, generator_id, previous_hash, type_of_consen
     if type_of_consensus == 5:
         new_block['Header']['dummy_new_proof'] = dummy_proof_generator_function(new_block)
     if type_of_consensus ==6:
-        new_block['Header']['digest']= encryption_module.generate_PKI_keys(64,'miner')
+        new_block['Header']['digest']= ''
         
     return new_block
 # 4- the 'miners_trigger' function triggers the miners to start mining/minting new blocks.

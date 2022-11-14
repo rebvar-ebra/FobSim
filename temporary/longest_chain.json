@@ -1,4 +1,25 @@
 {
-    "chain": {},
+    "chain": {
+        "0": {
+            "Header": {
+                "generator_id": "The Network",
+                "hash": "fe8ccdecfc250b85c528811313ad226b97896940ba9657222b69ba434b7b2803",
+                "blockNo": 0,
+                "digest": ""
+            },
+            "Body": {
+                "transactions": [
+                    "genesis_block",
+                    "Miner_1",
+                    "Miner_2",
+                    "Miner_3",
+                    "Miner_4"
+                ],
+                "nonce": 0,
+                "previous_hash": 0,
+                "timestamp": 1668460774.229898
+            }
+        }
+    },
     "from": "Miner_1"
 }
