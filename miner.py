@@ -205,7 +205,8 @@ class Miner:
                     if len(self.local_database['PREPARE'][get_hash]['votes']) > self.get_f() * len(miner_list) - 1:
 
                         block_info = {'votes': 1,
-                                      'timestamp': new_block['Body']['timestamp']
+                                      'timestamp': new_block['Body']['timestamp'],
+                                      'broadcast': False
                                       }
                         self.local_database['COMMIT'][get_hash] = block_info
                         block_info['votes'] = block_info['votes'] + 1
