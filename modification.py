@@ -65,12 +65,15 @@ def rewrite_file(file_path, new_version):
     while True:
         try:
             os.remove(file_path)
-        except Exception as e:
-            with contextlib.suppress(Exception):
-                with open(file_path, "w") as f:
-                    json.dump(new_version, f, indent=4)
-                return_key()
-                break
+        except Exception:
+            pass  # File may not exist, continue to write
+        try:
+            with open(file_path, "w") as f:
+                json.dump(new_version, f, indent=4)
+            return_key()
+            break
+        except Exception:
+            pass  # Retry if write fails
 
 
 return_key()

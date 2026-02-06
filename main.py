@@ -1,4 +1,3 @@
-from ast import Pass
 from multiprocessing import Process
 import Fog
 import end_user
@@ -204,7 +203,7 @@ def initiate_genesis_block(AI_wanted,):
     genesis_transactions = ["genesis_block"]
     for i in range(len(miner_list)):
         genesis_transactions.append(miner_list[i].address)
-        
+
         genesis_block = new_consensus_module.generate_new_block(genesis_transactions, 'The Network', 0, type_of_consensus, AI_wanted, False)
     output.block_info(genesis_block, type_of_consensus)
     for elem in miner_list:
@@ -242,12 +241,12 @@ def inform_miners_of_users_wallets():
 def select_leader(list_of_miners):
     selected_miner = random.choice(list_of_miners).address
     for entity in list_of_miners:
-        entity.leader = selected_miner 
+        entity.leader = selected_miner
         entity.number_of_miners = len(list_of_miners)
-        entity.number_of_tolerated_adversaries = entity.number_of_miners / 3
-        
-        
-    return list_of_miners 
+        entity.number_of_tolerated_adversaries = entity.number_of_miners // 3
+
+
+    return list_of_miners
 # def isleader_todo(list_of_miners):
 #     selected_of_miner=random.choice(list_of_miners)
 #     selected_of_miner.leader =True
@@ -288,8 +287,8 @@ if __name__ == '__main__':
         miner_list=select_leader(miner_list)
         print("print miners init",miner_list)
         AI_assisted_mining_wanted=give_miners_authorization(miner_list, type_of_consensus)
-        initiate_genesis_block(miner_list)
-        send_tasks_to_BC() 
+        initiate_genesis_block(AI_assisted_mining_wanted)
+        send_tasks_to_BC()
         new_consensus_module.miners_trigger(miner_list, type_of_consensus, expected_chain_length, Parallel_PoW_mining,
                                             numOfTXperBlock, blockchainFunction, poet_block_time, Asymmetric_key_length,
                                             number_of_DPoS_delegates, AI_assisted_mining_wanted)

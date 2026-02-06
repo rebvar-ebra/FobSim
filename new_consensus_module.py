@@ -140,7 +140,7 @@ def trigger_poet_miners(expected_chain_length, the_miners_list, poet_block_time,
             for obj in the_miners_list:
                 if obj.address in least_waiting_time_for:
                     obj.build_block(numOfTXperBlock, mempool.MemPool, the_miners_list, the_type_of_consensus, blockchainFunction,
-                                    expected_chain_length)
+                                    expected_chain_length, None)
         if mempool.MemPool.qsize() == 0:
             break
         else:
@@ -171,21 +171,27 @@ def trigger_dpos_miners(expected_chain_length, the_miners_list, number_of_delega
         for process in processes:
             process.join()
         output.simulation_progress(counter, expected_chain_length)
-        
 
-def trigger_bft_miners(the_miners_list, the_type_of_consensus, expected_chain_length, numOfTXperBlock,blockchainFunction):
+
+def trigger_bft_miners(the_miners_list, the_type_of_consensus, expected_chain_length, numOfTXperBlock, blockchainFunction):
+    leader = None
     for miner in the_miners_list:
         if miner.leader == miner.address:
             leader = miner.address
             break
     Number_of_confirm_blocks = 0
     while Number_of_confirm_blocks < expected_chain_length:
+        if mempool.MemPool.qsize() == 0:
+            break
         for obj in the_miners_list:
             if leader == obj.address:
                 obj.build_block(
                         numOfTXperBlock, mempool.MemPool, the_miners_list, the_type_of_consensus, blockchainFunction,
                         expected_chain_length, None)
-    
+                Number_of_confirm_blocks += 1
+                break
+        output.simulation_progress(Number_of_confirm_blocks, expected_chain_length)
+
 def pow_mining(block, AI_assisted_mining_wanted, is_adversary):
     while True:
         if AI_assisted_mining_wanted and is_adversary:
@@ -313,7 +319,8 @@ blockchain_CAs = {'1': 'Proof of Work (PoW)',
                   '3': 'Proof of Authority (PoA)',
                   '4': 'Proof of Elapsed Time (PoET)',
                   '5': 'Delegated Proof of Stake (DPoS)',
-                  '6': ' Practical Byzantine Fault Tolerance (PBFT)'}
+                  '6': ' Practical Byzantine Fault Tolerance (PBFT)',
+                  '8': 'Proof of Activity (PoA-Hybrid)'}
 
 # 2-if your consensus algorithm requires other files to refer to while miners are
 # processing TXs and Blocks, add them to the
@@ -322,11 +329,13 @@ blockchain_CAs = {'1': 'Proof of Work (PoW)',
 
 
 def prepare_necessary_files():
-    if num_of_consensus in [2, 5]:
+    if num_of_consensus in [2, 5, 8]:
         modification.write_file('temporary/miners_stake_amounts.json', {})
     if num_of_consensus == 6:
         modification.write_file('temporary/reply.json',{})
         # modification.write_file('temporary/example_of_new_log_file.json', {})
+    if num_of_consensus == 8:
+        modification.write_file('temporary/poa_hybrid_validators.json', {})
 
 
 # 3- the 'generate_new_block' generates a standard-like block. You can add more attributes
@@ -352,7 +361,7 @@ def generate_new_block(transactions, generator_id, previous_hash, type_of_consen
         new_block['Header']['dummy_new_proof'] = dummy_proof_generator_function(new_block)
     if type_of_consensus ==6:
         new_block['Header']['digest']= ''
-        
+
     return new_block
 # 4- the 'miners_trigger' function triggers the miners to start mining/minting new blocks.
 # add an IF statement to this function so that the simulator would know the trigger reference:
@@ -375,7 +384,9 @@ def miners_trigger(the_miners_list, the_type_of_consensus, expected_chain_length
         trigger_bft_miners(the_miners_list, the_type_of_consensus, expected_chain_length, numOfTXperBlock,blockchainFunction)
     if the_type_of_consensus == 7:
         trigger_dummy_miners(the_miners_list, numOfTXperBlock, the_type_of_consensus, blockchainFunction, expected_chain_length)
-    
+    if the_type_of_consensus == 8:
+        trigger_poa_hybrid_miners(the_miners_list, the_type_of_consensus, expected_chain_length, numOfTXperBlock, blockchainFunction)
+
 
 # 5- Add miner selection strategy here in a trigger_miners function as follows. The Selection strategy can be
 # randomized (as non-parallel PoW), conditioned (as PoS), parallel-randomized (as PoW), FCFS (as PoA), etc.
@@ -409,9 +420,11 @@ def block_is_valid(type_of_consensus, new_block, top_block, next_pos_block_from,
         return dpos_block_is_valid(new_block, delegates, top_block['Header']['hash'])
     if type_of_consensus ==6:
         return bft_block_is_valid(new_block, top_block['Header']['hash'])
-        
+
     if type_of_consensus == 7:
         return dummy_block_is_valid(new_block)
+    if type_of_consensus == 8:
+        return poa_hybrid_block_is_valid(new_block, top_block['Header']['hash'], miner_list)
 
 
 # 7- Add miner validation strategy in a 'block_is_valid' function (must match the name specified
@@ -434,3 +447,157 @@ def dummy_block_is_valid(block):
 
 def dummy_proof_generator_function(block):
     return encryption_module.hashing_function(block['Body'])
+
+
+# =============================================================================
+# PROOF OF ACTIVITY (PoA-Hybrid) CONSENSUS IMPLEMENTATION
+# Combines PoW (mining blank block) + PoS (validator signing)
+# =============================================================================
+
+def trigger_poa_hybrid_miners(the_miners_list, the_type_of_consensus, expected_chain_length, numOfTXperBlock, blockchainFunction):
+    """
+    Proof of Activity hybrid consensus:
+    Phase 1: Random miner mines a blank block template using PoW
+    Phase 2: Validators are selected based on stake to sign the block
+    Phase 3: Final validator adds transactions and block is committed
+    """
+    num_validators = max(1, len(the_miners_list) // 3)  # At least 1/3 of miners as validators
+
+    for counter in range(expected_chain_length):
+        if mempool.MemPool.qsize() == 0:
+            break
+
+        # Phase 1: PoW - Random miner mines blank block template
+        pow_miner = random.choice(the_miners_list)
+
+        # Get transactions for block
+        transactions = accumulate_transactions(numOfTXperBlock, mempool.MemPool, blockchainFunction, pow_miner.address)
+
+        # Get previous hash
+        local_chain = modification.read_file(f"temporary/{pow_miner.address}_local_chain.json")
+        if len(local_chain) == 0:
+            previous_hash = blockchain.genesis_hash
+        else:
+            previous_hash = local_chain[-1]['Header']['hash']
+
+        # Create block with PoW mining (blank template first, then add PoW)
+        new_block = poa_hybrid_generate_block(transactions, pow_miner.address, previous_hash, num_validators)
+
+        # Phase 2: PoS - Select validators based on stake
+        validators = select_poa_hybrid_validators(the_miners_list, num_validators, pow_miner.address)
+
+        # Validators sign the block
+        signatures = []
+        for validator in validators:
+            signature = encryption_module.hashing_function(
+                str(new_block['Header']['hash']) + validator.address
+            )
+            signatures.append({
+                'validator': validator.address,
+                'signature': signature
+            })
+
+        new_block['Header']['validator_signatures'] = signatures
+        new_block['Header']['pow_miner'] = pow_miner.address
+
+        # Phase 3: Broadcast to all miners
+        for miner in the_miners_list:
+            miner.receive_new_block(new_block, the_type_of_consensus, the_miners_list,
+                                    blockchainFunction, expected_chain_length)
+
+        output.simulation_progress(counter, expected_chain_length)
+
+
+def select_poa_hybrid_validators(the_miners_list, num_validators, exclude_miner):
+    """Select validators based on stake weight, excluding the PoW miner"""
+    stake_file = modification.read_file('temporary/miners_stake_amounts.json')
+
+    # Get eligible validators (exclude the PoW miner)
+    eligible_miners = [m for m in the_miners_list if m.address != exclude_miner]
+
+    if len(eligible_miners) == 0:
+        return the_miners_list[:num_validators]
+
+    # Sort by stake (descending) for weighted selection
+    miner_stakes = []
+    for miner in eligible_miners:
+        stake = stake_file.get(miner.address, 0)
+        miner_stakes.append((miner, stake))
+
+    # Sort by stake
+    miner_stakes.sort(key=lambda x: x[1], reverse=True)
+
+    # Select top validators by stake
+    selected = [m[0] for m in miner_stakes[:num_validators]]
+
+    # If not enough, add remaining miners randomly
+    if len(selected) < num_validators:
+        remaining = [m for m in eligible_miners if m not in selected]
+        while len(selected) < num_validators and remaining:
+            selected.append(random.choice(remaining))
+            remaining.remove(selected[-1])
+
+    return selected
+
+
+def poa_hybrid_generate_block(transactions, generator_id, previous_hash, num_validators):
+    """Generate a PoA-Hybrid block with PoW mining and space for validator signatures"""
+    new_block = {
+        'Header': {
+            'generator_id': generator_id,
+            'hash': '',
+            'blockNo': 0,
+            'pow_miner': generator_id,
+            'validator_signatures': [],  # Will be filled by validators
+            'required_validators': num_validators
+        },
+        'Body': {
+            'transactions': transactions,
+            'nonce': 0,
+            'previous_hash': previous_hash,
+            'timestamp': time.time()
+        }
+    }
+
+    # Apply PoW mining (same as regular PoW)
+    new_block = pow_mining(new_block, False, False)
+
+    return new_block
+
+
+def poa_hybrid_block_is_valid(new_block, expected_previous_hash, miner_list):
+    """
+    Validate a PoA-Hybrid block:
+    1. Check previous hash matches
+    2. Check PoW hash meets difficulty target
+    3. Check required number of validator signatures present
+    4. Check all signatures are valid
+    """
+    # Condition 1: Previous hash is correct
+    condition1 = new_block['Body']['previous_hash'] == expected_previous_hash
+
+    # Condition 2: PoW hash meets difficulty target
+    condition2 = int(new_block['Header']['hash'], 16) < blockchain.target
+
+    # Condition 3: Has required number of validator signatures
+    required_validators = new_block['Header'].get('required_validators', 1)
+    actual_signatures = new_block['Header'].get('validator_signatures', [])
+    condition3 = len(actual_signatures) >= required_validators
+
+    # Condition 4: Verify each signature
+    condition4 = True
+    for sig in actual_signatures:
+        expected_sig = encryption_module.hashing_function(
+            str(new_block['Header']['hash']) + sig['validator']
+        )
+        if sig['signature'] != expected_sig:
+            condition4 = False
+            break
+
+    # Condition 5: PoW miner is not a validator (separation of concerns)
+    pow_miner = new_block['Header'].get('pow_miner', '')
+    validator_addresses = [sig['validator'] for sig in actual_signatures]
+    condition5 = pow_miner not in validator_addresses
+
+    return condition1 and condition2 and condition3 and condition4 and condition5
+
