@@ -320,7 +320,8 @@ blockchain_CAs = {'1': 'Proof of Work (PoW)',
                   '4': 'Proof of Elapsed Time (PoET)',
                   '5': 'Delegated Proof of Stake (DPoS)',
                   '6': ' Practical Byzantine Fault Tolerance (PBFT)',
-                  '8': 'Proof of Activity (PoA-Hybrid)'}
+                  '8': 'Proof of Activity (PoA-Hybrid)',
+                  '9': 'Proof of Burn (PoB)'}
 
 # 2-if your consensus algorithm requires other files to refer to while miners are
 # processing TXs and Blocks, add them to the
@@ -333,9 +334,10 @@ def prepare_necessary_files():
         modification.write_file('temporary/miners_stake_amounts.json', {})
     if num_of_consensus == 6:
         modification.write_file('temporary/reply.json',{})
-        # modification.write_file('temporary/example_of_new_log_file.json', {})
     if num_of_consensus == 8:
         modification.write_file('temporary/poa_hybrid_validators.json', {})
+    if num_of_consensus == 9:
+        modification.write_file('temporary/burned_coins.json', {})
 
 
 # 3- the 'generate_new_block' generates a standard-like block. You can add more attributes
@@ -386,6 +388,8 @@ def miners_trigger(the_miners_list, the_type_of_consensus, expected_chain_length
         trigger_dummy_miners(the_miners_list, numOfTXperBlock, the_type_of_consensus, blockchainFunction, expected_chain_length)
     if the_type_of_consensus == 8:
         trigger_poa_hybrid_miners(the_miners_list, the_type_of_consensus, expected_chain_length, numOfTXperBlock, blockchainFunction)
+    if the_type_of_consensus == 9:
+        trigger_pob_miners(the_miners_list, the_type_of_consensus, expected_chain_length, numOfTXperBlock, blockchainFunction)
 
 
 # 5- Add miner selection strategy here in a trigger_miners function as follows. The Selection strategy can be
@@ -425,6 +429,8 @@ def block_is_valid(type_of_consensus, new_block, top_block, next_pos_block_from,
         return dummy_block_is_valid(new_block)
     if type_of_consensus == 8:
         return poa_hybrid_block_is_valid(new_block, top_block['Header']['hash'], miner_list)
+    if type_of_consensus == 9:
+        return pob_block_is_valid(new_block, top_block['Header']['hash'])
 
 
 # 7- Add miner validation strategy in a 'block_is_valid' function (must match the name specified
@@ -600,4 +606,91 @@ def poa_hybrid_block_is_valid(new_block, expected_previous_hash, miner_list):
     condition5 = pow_miner not in validator_addresses
 
     return condition1 and condition2 and condition3 and condition4 and condition5
+
+
+# =============================================================================
+# PROOF OF BURN (PoB) CONSENSUS IMPLEMENTATION
+# Miners burn coins to earn virtual mining power
+# =============================================================================
+
+def trigger_pob_miners(the_miners_list, the_type_of_consensus, expected_chain_length, numOfTXperBlock, blockchainFunction):
+    """
+    Proof of Burn consensus:
+    1. Miners burn coins (send to unspendable address)
+    2. Mining power is proportional to burned amount
+    3. Miner with highest burned amount has highest probability to mine
+    """
+    # Initialize burn amounts if not already done
+    burned_file = modification.read_file('temporary/burned_coins.json')
+    if len(burned_file) == 0:
+        # Simulate initial burns - each miner burns random amount
+        for miner in the_miners_list:
+            burn_amount = random.randint(10, 500)  # Simulated burn
+            burned_file[miner.address] = burn_amount
+        modification.rewrite_file('temporary/burned_coins.json', burned_file)
+
+    for counter in range(expected_chain_length):
+        if mempool.MemPool.qsize() == 0:
+            break
+
+        # Select miner weighted by burned amount
+        selected_miner = select_pob_miner(the_miners_list, burned_file)
+
+        # Build block
+        selected_miner.build_block(numOfTXperBlock, mempool.MemPool, the_miners_list,
+                                   the_type_of_consensus, blockchainFunction,
+                                   expected_chain_length, None)
+
+        output.simulation_progress(counter, expected_chain_length)
+
+
+def select_pob_miner(the_miners_list, burned_file):
+    """Select miner with probability proportional to burned coins"""
+    # Calculate total burned
+    total_burned = sum(burned_file.get(m.address, 0) for m in the_miners_list)
+
+    if total_burned == 0:
+        return random.choice(the_miners_list)
+
+    # Weighted random selection
+    rand_val = random.uniform(0, total_burned)
+    cumulative = 0
+
+    for miner in the_miners_list:
+        cumulative += burned_file.get(miner.address, 0)
+        if rand_val <= cumulative:
+            return miner
+
+    return the_miners_list[-1]  # Fallback
+
+
+def pob_block_is_valid(new_block, expected_previous_hash):
+    """
+    Validate a PoB block:
+    1. Check previous hash matches
+    2. Check hash is valid
+    3. Check generator has burned coins
+    """
+    # Condition 1: Previous hash is correct
+    condition1 = new_block['Body']['previous_hash'] == expected_previous_hash
+
+    # Condition 2: Hash is valid
+    condition2 = new_block['Header']['hash'] == encryption_module.hashing_function(new_block['Body'])
+
+    # Condition 3: Generator has burned coins (virtual mining power)
+    burned_file = modification.read_file('temporary/burned_coins.json')
+    generator = new_block['Header']['generator_id']
+    condition3 = burned_file.get(generator, 0) > 0
+
+    return condition1 and condition2 and condition3
+
+
+def burn_coins(miner_address, amount):
+    """Burn coins to increase virtual mining power"""
+    burned_file = modification.read_file('temporary/burned_coins.json')
+    current = burned_file.get(miner_address, 0)
+    burned_file[miner_address] = current + amount
+    modification.rewrite_file('temporary/burned_coins.json', burned_file)
+    return burned_file[miner_address]
+
 
