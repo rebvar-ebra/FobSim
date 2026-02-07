@@ -151,7 +151,10 @@ def create_components(miners_list):
     all_components = set()
     for entity in miners_list:
         component = set()
-        while len(entity.neighbours) < number_of_miner_neighbours:
+        # FIX: Ensure we don't loop forever if miners < neighbours
+        max_possible = len(miners_list) - 1
+        target = min(number_of_miner_neighbours, max_possible)
+        while len(entity.neighbours) < target:
             neighbour = random.choice(miners_list).address
             if neighbour != entity.address:
                 entity.neighbours.add(neighbour)

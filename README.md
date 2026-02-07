@@ -3,7 +3,33 @@ This project aims to introduce a reliable Fog-enhanced Blockchain simulation env
 
 This environment shall facilitate easy simulation for different Fog-Blockchain integration scenarios.
 
-FoBSim is implemented using Python 3.8, and it is adviced to be run on Linux or Windows OS.
+FoBSim is implemented using Python 3.8, and it now features a **Modern Web Dashboard** built with Next.js and FastAPI.
+
+---
+
+### 💎 Web Dashboard (Professional Platform)
+The new Next.js dashboard provides a research-grade interface with:
+- **Authentication**: Secure Signup/Login for multi-user experiments.
+- **Historical Analysis**: Persistent database records for all past runs.
+- **Consensus Analytics**: Side-by-side performance comparison charts.
+- **Live Monitoring**: Real-time CPU/Process utilization logs.
+
+**How to run (Dashboard):**
+1. **Install Backend Dependencies**:
+   ```bash
+   pip install fastapi uvicorn sqlalchemy passlib[bcrypt] python-jose[cryptography] python-multipart psutil
+   ```
+2. **Start the API Server**:
+   ```bash
+   python3 api/server.py
+   ```
+3. **Start the Frontend**:
+   ```bash
+   cd frontend && npm run dev
+   ```
+4. Access at: `http://localhost:3000` (Signup to begin!)
+
+---
 
 This research work is a part of a paper that is published in the PeerJ-Computer Science journal. The open-access paper can be found at:
 
@@ -16,7 +42,7 @@ IMPORTANT NOTE: Published code should be considered copyrighted whether or not i
 # To run FoBSim using Docker:
 1-	Update apt-get:
 
-Sudo apt-get update 
+Sudo apt-get update
 
 2-	Install Docker Desktop from:
 
@@ -38,7 +64,7 @@ sudo docker build -t fobsim .
 
 sudo docker run -it fobsim
 
-# To run FoBSim without Docker:
+# To run FoBSim (CLI Only):
 
 1- update installer: sudo apt-get update
 
@@ -104,7 +130,7 @@ After you clone the repository as clarified above, modify the 'Sim_parameters.js
 
 2- in the Modifiable part, follow the seven steps declared in the comments. Make sure to add instead of modify on the modifiable part. Thus, other code related to other consensus algorithms is not affected.
 
-3- As an example, we added a 'dummy consensus algorithm' which clarifies the main parts that should be added for a new proof-based algorithm. You can perform the same steps. 
+3- As an example, we added a 'dummy consensus algorithm' which clarifies the main parts that should be added for a new proof-based algorithm. You can perform the same steps.
 
 4- Additional functionalities can be added "if necessary" to any other module in the tool so that the proposed consensus algorithm works smoothly. For example, we added some conditional statements related to PoET to the 'build_block' method in the 'miner.py' file, and we added a 'PoET_server.py' (which includes only one method only) to forbid any confusions. However, we could simply add this method to the 'new_consensus_module.py'. Read the functions of all the available 5 consensus algorithms so that you get your self familiar of how a proof-based algorithm works.
 
