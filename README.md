@@ -29,6 +29,12 @@ The new Next.js dashboard provides a research-grade interface with:
    ```
 4. Access at: `http://localhost:3000` (Signup to begin!)
 
+> [!TIP]
+> **Remote Access**: If running on a server and accessing from another machine:
+> - The API server automatically binds to `0.0.0.0:8000`.
+> - Ensure your firewall allows incoming traffic on ports **8000** (API) and **3000** (Frontend).
+> - Access the dashboard using the server's IP (e.g., `http://10.64.68.21:3000`).
+
 ---
 
 This research work is a part of a paper that is published in the PeerJ-Computer Science journal. The open-access paper can be found at:
