@@ -136,6 +136,34 @@ After you clone the repository as clarified above, modify the 'Sim_parameters.js
 
 2- in the Modifiable part, follow the seven steps declared in the comments. Make sure to add instead of modify on the modifiable part. Thus, other code related to other consensus algorithms is not affected.
 
+# ☁️ Cloud Deployment Guide (AWS / GCP)
+
+FobSim is now fully containerized and cloud-ready. Follow these steps to deploy to any cloud provider with Docker support.
+
+### 1. Provision Server
+- **Recommended Instance**: `t3.medium` (AWS) or `e2-standard-2` (GCP)
+- **OS**: Ubuntu 22.04 LTS
+
+### 2. Configure Security Groups / Firewall
+Allow the following ports:
+- `3000`: Frontend Dashboard
+- `8000`: Backend API (FastAPI)
+
+### 3. Deploy with Docker Compose
+```bash
+# Install Docker
+sudo apt-get update
+sudo apt-get install docker.io docker-compose -y
+
+# Clone and Run
+git clone https://github.com/rebrahimy/FobSim.git
+cd FobSim
+docker-compose up -d --build
+```
+
+### 4. Verify
+Access the platform at `http://<YOUR_SERVER_IP>:3000`. The frontend will automatically detect the server IP and connect to the backend on port 8000.
+
 3- As an example, we added a 'dummy consensus algorithm' which clarifies the main parts that should be added for a new proof-based algorithm. You can perform the same steps.
 
 4- Additional functionalities can be added "if necessary" to any other module in the tool so that the proposed consensus algorithm works smoothly. For example, we added some conditional statements related to PoET to the 'build_block' method in the 'miner.py' file, and we added a 'PoET_server.py' (which includes only one method only) to forbid any confusions. However, we could simply add this method to the 'new_consensus_module.py'. Read the functions of all the available 5 consensus algorithms so that you get your self familiar of how a proof-based algorithm works.
