@@ -6,6 +6,7 @@ from fastapi import FastAPI, WebSocket, BackgroundTasks, Depends, HTTPException,
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import json
+from datetime import datetime
 import subprocess
 import asyncio
 import os
@@ -182,25 +183,45 @@ async def get_simulations(db: Session = Depends(get_db), current_user: models.Us
 
 @app.get("/api/analytics/compare")
 async def get_comparison_data(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    """Get aggregated comparison data across consensus algorithms"""
+    """Get aggregated comparison data across consensus algorithms with scientific metrics"""
     from sqlalchemy import func
 
     stats = db.query(
         models.Simulation.consensus,
         func.avg(models.Simulation.blocks_mined).label('avg_blocks'),
         func.avg(models.Simulation.avg_cpu).label('avg_cpu_load'),
+        func.avg(models.Simulation.forks).label('avg_forks'),
+        func.avg(models.Simulation.consistency).label('avg_consistency'),
+        func.avg(models.Simulation.throughput).label('avg_throughput'),
+        func.avg(models.Simulation.latency).label('avg_latency'),
         func.count(models.Simulation.id).label('run_count')
     ).filter(models.Simulation.user_id == current_user.id)\
      .group_by(models.Simulation.consensus).all()
 
-    return [
-        {
+    # We also need to get BPS which is in a JSON field (harder to AVG in SQL)
+    # We'll do a quick manual average for BPS per consensus type
+    raw_sims = db.query(models.Simulation).filter(models.Simulation.user_id == current_user.id).all()
+    bps_map = {}
+    for r in raw_sims:
+        if r.consensus not in bps_map: bps_map[r.consensus] = []
+        if r.config and 'bps' in r.config:
+            bps_map[r.consensus].append(r.config['bps'])
+
+    results = []
+    for s in stats:
+        avg_bps = sum(bps_map[s.consensus]) / len(bps_map[s.consensus]) if s.consensus in bps_map and bps_map[s.consensus] else 0
+        results.append({
             "name": s.consensus,
             "blocks": round(float(s.avg_blocks), 2),
             "cpu": round(float(s.avg_cpu_load), 2),
+            "forks": round(float(s.avg_forks), 2),
+            "consistency": round(float(s.avg_consistency), 2),
+            "throughput": round(float(s.avg_throughput or 0), 2),
+            "latency": round(float(s.avg_latency or 0), 4),
+            "bps": round(avg_bps, 4),
             "runs": s.run_count
-        } for s in stats
-    ]
+        })
+    return results
 
 @app.get("/api/consensus")
 async def get_consensus_options():
@@ -429,7 +450,7 @@ async def execute_simulation(blockchain_function: int, placement: int, consensus
     finally:
         simulation_running = False
 
-        # Finalize DB record
+        # Finalize DB record with scientific metrics
         try:
             db_session = SessionLocal()
             sim = db_session.query(models.Simulation).filter(models.Simulation.id == sim_id).first()
@@ -440,15 +461,70 @@ async def execute_simulation(blockchain_function: int, placement: int, consensus
 
                 sim.ended_at = datetime.utcnow()
 
-                # Calculate final stats from output
-                blocks = 0
-                for line in simulation_output:
-                    if "block has been proposed" in line or "Block" in line:
-                        blocks += 1
+                # --- Scientific Analytics Parsing ---
+                temp_dir = os.path.join(os.path.dirname(__file__), "..", "temporary")
+                chains = []
 
-                sim.blocks_mined = blocks // 2 # Rough estimate based on current logic
-                if cpu_readings:
-                    sim.avg_cpu = sum(cpu_readings) / len(cpu_readings)
+                # 1. Load all miner chains to check consistency
+                try:
+                    for filename in os.listdir(temp_dir):
+                        if filename.endswith("_local_chain.json"):
+                            with open(os.path.join(temp_dir, filename), "r") as f:
+                                chain_data = json.load(f)
+                                if chain_data:
+                                    chains.append(chain_data)
+                except Exception as e:
+                    print(f"Analytics Error: Could not read chain files: {e}")
+
+                if chains:
+                    # 2. Calculate Scientific Metrics
+                    longest_chain = max(chains, key=len)
+                    total_blocks = len(longest_chain)
+                    sim.blocks_mined = total_blocks
+
+                    # Consistency & Fork Detection
+                    heads = []
+                    for c in chains:
+                        if c:
+                            last_idx = str(len(c) - 1)
+                            if last_idx in c:
+                                heads.append(c[last_idx]['Header']['hash'])
+
+                    if heads:
+                        sim.forks = len(set(heads))
+                        from collections import Counter
+                        most_common_count = Counter(heads).most_common(1)[0][1]
+                        sim.consistency = (most_common_count / len(heads)) * 100
+
+                    # BPS, TPS, and Latency Calculation
+                    if total_blocks > 1:
+                        ts_list = [longest_chain[i]['Body']['timestamp'] for i in longest_chain if 'Body' in longest_chain[i]]
+                        if len(ts_list) > 1:
+                            duration = max(ts_list) - min(ts_list)
+                            if duration > 0:
+                                # Throughput (TPS)
+                                tx_per_block = sim.config.get('numOfTXperBlock', 5) if sim.config else 5
+                                sim.throughput = round((total_blocks * tx_per_block) / duration, 4)
+
+                                # Latency (Sec per Block)
+                                sim.latency = round(duration / total_blocks, 4)
+
+                                # BPS for backward compatibility in config
+                                if not sim.config: sim.config = {}
+                                sim.config['bps'] = round(total_blocks / duration, 4)
+
+                    # 3. CPU Load
+                    if cpu_readings:
+                        sim.avg_cpu = sum(cpu_readings) / len(cpu_readings)
+                else:
+                    # Fallback to line counting if no chains found
+                    blocks = 0
+                    for line in simulation_output:
+                        if "block has been proposed" in line or "Block" in line:
+                            blocks += 1
+                    sim.blocks_mined = blocks // 2
+                    if cpu_readings:
+                        sim.avg_cpu = sum(cpu_readings) / len(cpu_readings)
 
                 db_session.commit()
             db_session.close()

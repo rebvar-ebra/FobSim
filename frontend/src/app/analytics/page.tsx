@@ -14,7 +14,7 @@ import {
   Line,
   Cell
 } from "recharts";
-import { BarChart3, TrendingUp, Cpu, Box, Info, Target, Zap } from "lucide-react";
+import { BarChart3, TrendingUp, Cpu, Box, Info, Target, Zap, GitFork } from "lucide-react";
 import { API_URL } from "../api";
 
 export default function AnalyticsPage() {
@@ -65,25 +65,25 @@ export default function AnalyticsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Card 1: Throughput */}
+          {/* Card 1: Throughput (TPS) */}
           <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-3xl backdrop-blur-sm relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
               <Zap size={80} className="text-amber-400" />
             </div>
             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-              <Box className="text-amber-400" size={20} /> Throughput (Avg Blocks)
+              <Zap className="text-amber-400" size={20} /> Transaction Throughput (TPS)
             </h3>
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
-                  <YAxis stroke="#64748b" fontSize={12} />
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={10} tick={{fill: '#64748b'}} />
+                  <YAxis stroke="#64748b" fontSize={12} label={{ value: 'TX / Sec', angle: -90, position: 'insideLeft', fill: '#64748b' }} />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
                     itemStyle={{ color: '#fff' }}
                   />
-                  <Bar dataKey="blocks" radius={[4, 4, 0, 0]}>
+                  <Bar dataKey="throughput" radius={[4, 4, 0, 0]}>
                     {data.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
@@ -93,26 +93,84 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {/* Card 2: Resource Efficiency */}
+          {/* Card 2: Block Latency */}
           <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-3xl backdrop-blur-sm relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <Cpu size={80} className="text-cyan-400" />
+              <Box size={80} className="text-cyan-400" />
             </div>
             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-              <Cpu className="text-cyan-400" size={20} /> Resource Efficiency (Avg CPU %)
+              <Box className="text-cyan-400" size={20} /> Block Latency (avg sec/block)
             </h3>
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
-                  <YAxis stroke="#64748b" fontSize={12} />
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={10} />
+                  <YAxis stroke="#64748b" fontSize={12} label={{ value: 'Seconds', angle: -90, position: 'insideLeft', fill: '#64748b' }} />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
                   />
                   <Line
                     type="monotone"
-                    dataKey="cpu"
+                    dataKey="latency"
+                    stroke="#06b6d4"
+                    strokeWidth={3}
+                    dot={{ fill: '#06b6d4', r: 6 }}
+                    activeDot={{ r: 8, stroke: '#fff', strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Card 3: Network Stability (Forks) */}
+          <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-3xl backdrop-blur-sm relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+              <GitFork size={80} className="text-rose-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+              <GitFork className="text-rose-400" size={20} /> Network Stability (Avg Forks)
+            </h3>
+            <div className="h-80 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={10} tick={{fill: '#64748b'}} />
+                  <YAxis stroke="#64748b" fontSize={12} label={{ value: 'Forks', angle: -90, position: 'insideLeft', fill: '#64748b' }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                    itemStyle={{ color: '#fff' }}
+                  />
+                  <Bar dataKey="forks" radius={[4, 4, 0, 0]}>
+                    {data.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Card 4: Network Integrity */}
+          <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-3xl backdrop-blur-sm relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+              <Target size={80} className="text-emerald-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+              <Target className="text-emerald-400" size={20} /> Network Consistency (%)
+            </h3>
+            <div className="h-80 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={10} />
+                  <YAxis stroke="#64748b" fontSize={12} domain={[0, 100]} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="consistency"
                     stroke="#10b981"
                     strokeWidth={3}
                     dot={{ fill: '#10b981', r: 6 }}
@@ -126,32 +184,50 @@ export default function AnalyticsPage() {
           {/* Card 3: Detailed Insights */}
           <div className="lg:col-span-2 bg-slate-900/50 border border-slate-800 p-8 rounded-3xl backdrop-blur-sm">
             <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-2">
-              <Target className="text-violet-400" size={20} /> Comparative Performance Benchmark
+              <TrendingUp className="text-violet-400" size={20} /> Comparative Performance Benchmark
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {data.map((item, idx) => (
                 <div key={item.name} className="p-6 bg-slate-800/40 rounded-2xl border border-slate-700/50 hover:border-cyan-500/30 transition-all">
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">{item.name}</span>
-                    <span className="text-xs px-2 py-1 bg-cyan-500/10 text-cyan-400 rounded-md font-mono">{item.runs} Runs</span>
+                    <span className="text-sm font-bold text-slate-400 uppercase tracking-widest leading-tight">{item.name}</span>
+                    <span className="text-[10px] px-2 py-1 bg-cyan-500/10 text-cyan-400 rounded-md font-mono whitespace-nowrap">{item.runs} Runs</span>
                   </div>
+
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-700/30">
+                        <div className="text-[10px] text-slate-500 uppercase">Throughput</div>
+                        <div className="text-sm font-bold text-cyan-400">{item.throughput} TPS</div>
+                    </div>
+                    <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-700/30">
+                        <div className="text-[10px] text-slate-500 uppercase">Latency</div>
+                        <div className="text-sm font-bold text-rose-400">{item.latency}s</div>
+                    </div>
+                  </div>
+
                   <div className="space-y-4">
                     <div>
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-500">Stability</span>
-                        <span className="text-white">High</span>
+                        <span className="text-slate-500">Network Consistency</span>
+                        <span className="text-white">{item.consistency}%</span>
                       </div>
                       <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-gradient-to-r from-cyan-500 to-violet-500 h-full w-[85%]" />
+                        <div
+                          className="bg-gradient-to-r from-emerald-500 to-cyan-500 h-full transition-all duration-500"
+                          style={{ width: `${item.consistency}%` }}
+                        />
                       </div>
                     </div>
                     <div>
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-500">Scaling</span>
-                        <span className="text-white">Moderate</span>
+                        <span className="text-slate-500">CPU Overhead</span>
+                        <span className="text-white">{item.cpu}%</span>
                       </div>
                       <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-gradient-to-r from-cyan-500 to-violet-500 h-full w-[60%]" />
+                        <div
+                          className="bg-gradient-to-r from-orange-500 to-rose-500 h-full transition-all duration-500"
+                          style={{ width: `${Math.min(item.cpu, 100)}%` }}
+                        />
                       </div>
                     </div>
                   </div>

@@ -30,5 +30,9 @@ class Simulation(Base):
     # Summary stats
     blocks_mined = Column(Integer, default=0)
     avg_cpu = Column(Float, default=0)
+    forks = Column(Integer, default=0)
+    consistency = Column(Float, default=100.0) # Percentage
+    latency = Column(Float, default=0.0)      # Average block time (sec)
+    throughput = Column(Float, default=0.0)   # Transactions per second (TPS)
 
     user = relationship("User", back_populates="simulations")

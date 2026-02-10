@@ -1,86 +1,114 @@
 {
-    "64cc2e054bfb24c9cebbe59a3ba4113e9fc90cd21df6b25e7c1ade7cdfaf5b5b": {
+    "000bfe6442e858c5adc75bf7c177497e22cf08f42c943dd35c4e102566b7fb0a": {
         "winning_miner": "Miner_1",
-        "votes": 2
+        "votes": 3
     },
-    "043a31ac33641599ac3db51f03825fa73b371ce509d2665bfcb0fd87bfb34971": {
+    "00038de1eabebdd3501756887520c03159379d6828c5906763d15f2d903a5b41": {
+        "winning_miner": "Miner_4",
+        "votes": 3
+    },
+    "000e475f3d0be13e5f19f3db485e8ee3225d51f4fed0548881b0c70a76b534ea": {
+        "winning_miner": "Miner_4",
+        "votes": 3
+    },
+    "00023f510aae9df8ddccf031764d27ee999855a6a14d3c367526757501a38b87": {
+        "winning_miner": "Miner_4",
+        "votes": 3
+    },
+    "000d09248b54c4cf3042dffe951b425f51f23251c0f6ce2394c2174f18ee654e": {
+        "winning_miner": "Miner_5",
+        "votes": 3
+    },
+    "000f1ce95275d99e7de21a4509a4fdb973194f71538279736079f62f6ece08ee": {
+        "winning_miner": "Miner_5",
+        "votes": 3
+    },
+    "000cd186026688546a4853548c32edb7f11c97975dff1ea14c69a950e8095813": {
+        "winning_miner": "Miner_3",
+        "votes": 3
+    },
+    "000dbece5c0397c955b7bdba17a9759ae1218f173496f137545d91afb80dd21a": {
+        "winning_miner": "Miner_1",
+        "votes": 3
+    },
+    "000e93afd8450f598c0fc85e609cf24b176ebd7c41b280b5f68689444f8cbbb5": {
         "winning_miner": "Miner_2",
-        "votes": 2
+        "votes": 3
     },
-    "a12fe7d9a58c25cb7c6d73851000a0f5fcc47119077ecbf530c742ef39ecdde8": {
+    "0002ce104cb3e2420fea25b4c2bfbaf30d69c0b0123c64c9667f7787b1ad2a1f": {
+        "winning_miner": "Miner_5",
+        "votes": 3
+    },
+    "0000f070255cf0277142638074809332bdd0dc72d11fc989f3b6bf702f6130fb": {
+        "winning_miner": "Miner_1",
+        "votes": 3
+    },
+    "00080833c251a1de99eab92f5b4a7fc047807626492436b1c0c4e8d0603817da": {
+        "winning_miner": "Miner_3",
+        "votes": 3
+    },
+    "000c65d9ee31435252988f17f1764c4b92559d25bafbc41cc58963cff18c678a": {
+        "winning_miner": "Miner_1",
+        "votes": 3
+    },
+    "000407d606cf92dea164b3fe519b8e6552d5e84fa02cdc8329c7686fb9b2356c": {
+        "winning_miner": "Miner_5",
+        "votes": 3
+    },
+    "000f8c480c6209dbc5d19dd7b56012f58ddb6b8450371635075cc8c7549c8aad": {
         "winning_miner": "Miner_2",
-        "votes": 2
+        "votes": 3
     },
-    "49f2fddc985c65bf49c3a0e81c252d91c96d6733b062ea2fbe187fe6daec847b": {
-        "winning_miner": "Miner_1",
-        "votes": 2
-    },
-    "b34447b487363f1c0352bb8060d07d0b4505d969a02151ae71dc0ab411284e03": {
-        "winning_miner": "Miner_1",
-        "votes": 2
-    },
-    "6d3ca598db91529f999ccd93e9372f9e8bc20ae07acb80ffeb120bc66da01b35": {
-        "winning_miner": "Miner_1",
-        "votes": 2
-    },
-    "65e27c30b52dda2e7dae8894b56221c9c383eea9be508dac5dce181ab3a8f5f4": {
-        "winning_miner": "Miner_1",
-        "votes": 2
-    },
-    "6396d3d6a8d0d684ed7860a57779b1dc8cb18780afc19cab3d5c7c46528b002f": {
-        "winning_miner": "Miner_1",
-        "votes": 2
-    },
-    "36c386e2d1f02e1e15585cbfdaa870cac2fd2243118b07137f885c5876211f32": {
-        "winning_miner": "Miner_1",
-        "votes": 2
-    },
-    "723ce9cf34ea2b7a8f23434667e33c8f1845288218fe8f38bbedc1e34fd1f376": {
-        "winning_miner": "Miner_1",
-        "votes": 2
-    },
-    "a00ad87c714dd0937a7502f70bce46fcfcc8aa98bc2d9833830a0a4a82dee771": {
-        "winning_miner": "Miner_1",
-        "votes": 2
-    },
-    "b055cf70f42db49a2de4e25d9a4c98e469d27ce41f37c19017c3f51792ec0049": {
-        "winning_miner": "Miner_1",
-        "votes": 2
-    },
-    "dc6a7b7e982d4d34bac664f65decc027f1fe03eb95fa6ef3ed20aa7ae9e984ae": {
-        "winning_miner": "Miner_1",
-        "votes": 2
-    },
-    "bfb69d43848f24bd62bfad602c5bb60e26d0fd39d2040effe85adc835702b476": {
+    "0009c54116fe6f2fd482145bfd29175c37be0867c376944dde55ffb1cd0cf0b1": {
         "winning_miner": "Miner_2",
-        "votes": 2
+        "votes": 3
     },
-    "056cbab60111f075ca46bad1f6abfa752723da5a5c74a81124843e8795e404b5": {
-        "winning_miner": "Miner_1",
-        "votes": 2
+    "0003c26ed210c860aa1d126b23679a9c7051e7b6b2c857eb0fb146e31159f9cc": {
+        "winning_miner": "Miner_3",
+        "votes": 3
     },
-    "ce7ae0caee884ab76a85969d0e1164de8c40c06098fd5e7d122970b971a0f9e8": {
-        "winning_miner": "Miner_1",
-        "votes": 2
-    },
-    "bb517b9b4df9750bca0cd1b4d1ce3d6b7e7d131207f25fe86ba6a1a09f52f2ce": {
+    "00084133cc241e9b9fb22a28030925aca871770759cfc8833f2dc5da0f9805c8": {
         "winning_miner": "Miner_2",
-        "votes": 2
+        "votes": 3
     },
-    "003758f140e0f64ee2d8bcebdd4adc5b5e33a68478898c8abbd5fc1402e7958e": {
-        "winning_miner": "Miner_1",
-        "votes": 2
-    },
-    "f23d06d6f5062917d8ed7444f5ae37d8e3586076d06bdfc4931c1a691ad53d5d": {
-        "winning_miner": "Miner_1",
-        "votes": 2
-    },
-    "0f0820ec6d6a88812b478d945162a64fb815c6db170d01d54b8f52f3fe3f2a9c": {
-        "winning_miner": "Miner_1",
-        "votes": 2
-    },
-    "3007b16f63ed123047cafbe45c296400b778671372f73438471e1d040b6ad791": {
+    "0009c0490c6868b365ef10f42ae9ccbefac5c204fb31662a43f2793e6ccb4a79": {
         "winning_miner": "Miner_2",
-        "votes": 2
+        "votes": 3
+    },
+    "000c24d6974b2f8f05da83d6c84e1a61a7bc22e8dfcd4f944cdbd1ff0c82d209": {
+        "winning_miner": "Miner_5",
+        "votes": 3
+    },
+    "000dfc8c17ba155105fee67376eac35a684b5668bac6b0df29bfad2ff2a235ff": {
+        "winning_miner": "Miner_4",
+        "votes": 3
+    },
+    "0001be905c453d960c85d14924f709083dbd7ffd3a003b736597871324e6fa88": {
+        "winning_miner": "Miner_5",
+        "votes": 3
+    },
+    "0006aedbbd57ed903747db0b835051d8adcf607b91353fff643affd1380bffa5": {
+        "winning_miner": "Miner_5",
+        "votes": 3
+    },
+    "00052cdcc6ac4962dd4adc91dfab626d886ed813401646aa44b965cd7fb86236": {
+        "winning_miner": "Miner_4",
+        "votes": 3
+    },
+    "000761832cc1f6b9438a9565f2cd72e79cbbd113f99392cd69f6bfd1b4e79826": {
+        "winning_miner": "Miner_4",
+        "votes": 3
+    },
+    "0002dc252ed0dd18238b486e080b42489d3b64647181f63baf693d0646990947": {
+        "winning_miner": "Miner_1",
+        "votes": 3
+    },
+    "0006361e46ec5bf11c17bd99b682a267e6b8ac7887cfab3ce731121fd6843a4c": {
+        "winning_miner": "Miner_5",
+        "votes": 3
+    },
+    "0003a1cf96a21fded126fc5615add2e5ce2642882879da4dc112b89b118093a8": {
+        "winning_miner": "Miner_5",
+        "votes": 3
     }
 }
