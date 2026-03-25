@@ -62,3 +62,7 @@ class Fog:
             
         if temporary_task[-1] == 4:
             self.local_storage.extend(self.tasks)
+            
+        if temporary_task[-1] == 5:
+            # For Federated Learning, we just send all local model updates to the blockchain mempool for global aggregation
+            self._put_tasks_to_mempool(self.tasks, 5)

@@ -22,6 +22,12 @@ export const FingerprintIcon = () => (
   </svg>
 );
 
+export const NetworkIcon = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><line x1="10.5" y1="7.5" x2="6.5" y2="16.5"/><line x1="13.5" y1="7.5" x2="17.5" y2="16.5"/><line x1="8" y1="19" x2="16" y2="19"/>
+  </svg>
+);
+
 export const BlockchainCubeIcon = () => (
   <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
     <path d="M32 8L52 20V44L32 56L12 44V20L32 8Z" stroke="white" strokeWidth="2" fill="none"/>
@@ -56,6 +62,7 @@ export const FUNCTIONS = [
   { id: 2, name: "Compute", desc: "Distributed computing for smart contracts.", Icon: ComputeIcon, color: "#8b5cf6" },
   { id: 3, name: "Payment", desc: "Fast digital asset transfers and transactions.", Icon: PaymentIcon, color: "#10b981" },
   { id: 4, name: "Identity", desc: "Decentralized identity and authentication.", Icon: FingerprintIcon, color: "#f59e0b" },
+  { id: 5, name: "Federated Learning", desc: "Decentralized machine learning model aggregation.", Icon: NetworkIcon, color: "#ec4899" },
 ];
 
 export const CONSENSUS = [

@@ -72,6 +72,8 @@ def inform_of_fog_procedure(blockchain_function, stor_plc):
         print('All payment tasks will be handled by the Blockchain')
     if blockchain_function == 4:
         print('All Identity data will be stored only in the Fog Layer')
+    if blockchain_function == 5:
+        print('Local ML model gradients will be securely aggregated by the Blockchain miners.')
     confirm = input('Press Enter to proceed or Exit and modify on the SimParameters.json file.')
 
 

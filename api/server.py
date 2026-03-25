@@ -130,6 +130,7 @@ BLOCKCHAIN_FUNCTIONS = {
     2: "Computational Services",
     3: "Payment/Trading",
     4: "Identity Management",
+    5: "Federated Learning",
 }
 
 

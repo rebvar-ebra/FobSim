@@ -24,6 +24,8 @@ class User:
             self.__apply_third_functionality(num_of_task_per_user, list_of_end_users, blockchain_function)
         if blockchain_function == 4:
             self.__apply_forth_functionality(blockchain_function)
+        if blockchain_function == 5:
+            self.__apply_fifth_functionality(num_of_task_per_user, blockchain_function)
 
     def send_tasks(self, list_of_fog_nodes):
         for obj in list_of_fog_nodes:
@@ -57,6 +59,17 @@ class User:
         add_new_attributes(self)
         proposed_transaction = [self.addressParent, self.addressSelf, self.identity_added_attributes, blockchain_function]
         self.tasks.append(proposed_transaction)
+
+    def __apply_fifth_functionality(self, num_of_task_per_user, blockchain_function):
+        # Federated Learning Functionality
+        import hashlib
+        for _ in range(num_of_task_per_user):
+            # Create a mock gradient vector hash representing local ML model updates
+            raw = str(random.random()).encode('utf-8')
+            model_hash = hashlib.md5(raw).hexdigest()
+            # Format: [Fog_ID, User_ID, Task_Type, Model_Hash, Function_ID]
+            proposed_transaction = [self.addressParent, self.addressSelf, "Local_Model_Update", model_hash, blockchain_function]
+            self.tasks.append(proposed_transaction)
 
 
 def add_new_attributes(user):
