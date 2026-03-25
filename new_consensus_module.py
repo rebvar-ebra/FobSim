@@ -321,7 +321,8 @@ blockchain_CAs = {'1': 'Proof of Work (PoW)',
                   '5': 'Delegated Proof of Stake (DPoS)',
                   '6': ' Practical Byzantine Fault Tolerance (PBFT)',
                   '8': 'Proof of Activity (PoA-Hybrid)',
-                  '9': 'Proof of Burn (PoB)'}
+                  '9': 'Proof of Burn (PoB)',
+                  '10': 'Directed Acyclic Graph (DAG)'}
 
 # 2-if your consensus algorithm requires other files to refer to while miners are
 # processing TXs and Blocks, add them to the
@@ -390,6 +391,8 @@ def miners_trigger(the_miners_list, the_type_of_consensus, expected_chain_length
         trigger_poa_hybrid_miners(the_miners_list, the_type_of_consensus, expected_chain_length, numOfTXperBlock, blockchainFunction)
     if the_type_of_consensus == 9:
         trigger_pob_miners(the_miners_list, the_type_of_consensus, expected_chain_length, numOfTXperBlock, blockchainFunction)
+    if the_type_of_consensus == 10:
+        trigger_dag_miners(the_miners_list, the_type_of_consensus, expected_chain_length, numOfTXperBlock, blockchainFunction)
 
 
 # 5- Add miner selection strategy here in a trigger_miners function as follows. The Selection strategy can be
@@ -431,6 +434,8 @@ def block_is_valid(type_of_consensus, new_block, top_block, next_pos_block_from,
         return poa_hybrid_block_is_valid(new_block, top_block['Header']['hash'], miner_list)
     if type_of_consensus == 9:
         return pob_block_is_valid(new_block, top_block['Header']['hash'])
+    if type_of_consensus == 10:
+        return dag_block_is_valid(new_block)
 
 
 # 7- Add miner validation strategy in a 'block_is_valid' function (must match the name specified
@@ -692,5 +697,71 @@ def burn_coins(miner_address, amount):
     burned_file[miner_address] = current + amount
     modification.rewrite_file('temporary/burned_coins.json', burned_file)
     return burned_file[miner_address]
+
+
+# =============================================================================
+# DIRECTED ACYCLIC GRAPH (DAG) IMPLEMENTATION
+# =============================================================================
+
+def trigger_dag_miners(the_miners_list, the_type_of_consensus, expected_chain_length, numOfTXperBlock, blockchainFunction):
+    """
+    DAG consensus:
+    Each new block references 2 previous random unconfirmed blocks (tips).
+    """
+    for counter in range(expected_chain_length):
+        if mempool.MemPool.qsize() == 0:
+            break
+
+        # Select a random node to attach the transaction
+        dag_miner = random.choice(the_miners_list)
+
+        # Get transactions
+        transactions = accumulate_transactions(numOfTXperBlock, mempool.MemPool, blockchainFunction, dag_miner.address)
+
+        # Get 2 tips from local chain
+        local_chain = modification.read_file(f"temporary/{dag_miner.address}_local_chain.json")
+        tips = []
+        if len(local_chain) == 0:
+            tips = [blockchain.genesis_hash, blockchain.genesis_hash]
+        elif len(local_chain) == 1:
+            tips = [local_chain['0']['Header']['hash'], local_chain['0']['Header']['hash']]
+        else:
+            # Pick the 2 most recent for simplicity in this simulation topological sort
+            keys = list(local_chain.keys())
+            tips = [local_chain[keys[-1]]['Header']['hash'], local_chain[keys[-2]]['Header']['hash']]
+
+        # Generate block with tips
+        new_block = generate_dag_block(transactions, dag_miner.address, tips)
+
+        # Broadcast
+        for miner in the_miners_list:
+            if miner.address in dag_miner.neighbours or miner.address == dag_miner.address:
+                miner.receive_new_block(new_block, the_type_of_consensus, the_miners_list,
+                                        blockchainFunction, expected_chain_length)
+
+        output.simulation_progress(counter, expected_chain_length)
+
+def generate_dag_block(transactions, generator_id, tips):
+    new_block = {
+        'Header': {
+            'generator_id': generator_id,
+            'hash': '',
+            'blockNo': 0
+        },
+        'Body': {
+            'transactions': transactions,
+            'nonce': random.randint(0, 10000), # Tiny PoW
+            'previous_hash': tips, # List of 2 hashes
+            'timestamp': time.time()
+        }
+    }
+    new_block['Header']['hash'] = encryption_module.hashing_function(new_block['Body'])
+    return new_block
+
+def dag_block_is_valid(new_block):
+    # DAG block is valid if hash is correct and it references 2 tips
+    condition1 = new_block['Header']['hash'] == encryption_module.hashing_function(new_block['Body'])
+    condition2 = isinstance(new_block['Body']['previous_hash'], list) and len(new_block['Body']['previous_hash']) == 2
+    return condition1 and condition2
 
 

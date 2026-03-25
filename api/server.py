@@ -122,6 +122,7 @@ CONSENSUS_ALGORITHMS = {
     6: "Practical Byzantine Fault Tolerance (PBFT)",
     8: "Proof of Activity (PoA-Hybrid)",
     9: "Proof of Burn (PoB)",
+    10: "Directed Acyclic Graph (DAG)",
 }
 
 BLOCKCHAIN_FUNCTIONS = {

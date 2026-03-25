@@ -2,7 +2,7 @@
     "0": {
         "Header": {
             "generator_id": "The Network",
-            "hash": "10d31a64585b815edb2c6c5409568865b281a49bd570e04981a9d67b06ab61b5",
+            "hash": "2bb4d050d0af2e8f031839a869fab84f45d78fd1f4470f73c26396cd8b8f64a7",
             "blockNo": 0
         },
         "Body": {
@@ -14,43 +14,91 @@
             ],
             "nonce": 0,
             "previous_hash": 0,
-            "timestamp": 1774471350.1197517
+            "timestamp": 1774471816.5598974
         }
     },
     "1": {
         "Header": {
             "generator_id": "Miner_1",
-            "hash": "cb8a43b84200bd75b033fe1504bbfa249923a1d07ac4f0dd72922560a6bf5d6b",
+            "hash": "52a70bb22bda48c2c6f78adc7a7182bc02039ce36aa080b9513b27ff1d7a4d7f",
             "blockNo": 1
         },
         "Body": {
             "transactions": [
                 "ROLLUP",
-                11,
+                13,
                 "simulated_zk_proof",
                 2
             ],
-            "nonce": 0,
-            "previous_hash": "10d31a64585b815edb2c6c5409568865b281a49bd570e04981a9d67b06ab61b5",
-            "timestamp": 1774471350.4294176
+            "nonce": 801,
+            "previous_hash": [
+                "2bb4d050d0af2e8f031839a869fab84f45d78fd1f4470f73c26396cd8b8f64a7",
+                "2bb4d050d0af2e8f031839a869fab84f45d78fd1f4470f73c26396cd8b8f64a7"
+            ],
+            "timestamp": 1774471817.7923474
         }
     },
     "2": {
         "Header": {
             "generator_id": "Miner_1",
-            "hash": "55ecf71669f5e1f2db407422a2fa8669c5c5fdfcb5d05882463432d1e48e08c6",
+            "hash": "52a70bb22bda48c2c6f78adc7a7182bc02039ce36aa080b9513b27ff1d7a4d7f",
             "blockNo": 2
         },
         "Body": {
             "transactions": [
                 "ROLLUP",
-                15,
+                13,
                 "simulated_zk_proof",
                 2
             ],
-            "nonce": 0,
-            "previous_hash": "cb8a43b84200bd75b033fe1504bbfa249923a1d07ac4f0dd72922560a6bf5d6b",
-            "timestamp": 1774471353.9734774
+            "nonce": 801,
+            "previous_hash": [
+                "2bb4d050d0af2e8f031839a869fab84f45d78fd1f4470f73c26396cd8b8f64a7",
+                "2bb4d050d0af2e8f031839a869fab84f45d78fd1f4470f73c26396cd8b8f64a7"
+            ],
+            "timestamp": 1774471817.7923474
+        }
+    },
+    "3": {
+        "Header": {
+            "generator_id": "Miner_1",
+            "hash": "b4c579ad405a7c2e8675f6d91242d4727ede077dcb168ddf0f9e5accfb01f355",
+            "blockNo": 3
+        },
+        "Body": {
+            "transactions": [
+                "ROLLUP",
+                14,
+                "simulated_zk_proof",
+                2
+            ],
+            "nonce": 3588,
+            "previous_hash": [
+                "52a70bb22bda48c2c6f78adc7a7182bc02039ce36aa080b9513b27ff1d7a4d7f",
+                "52a70bb22bda48c2c6f78adc7a7182bc02039ce36aa080b9513b27ff1d7a4d7f"
+            ],
+            "timestamp": 1774471822.9835856
+        }
+    },
+    "4": {
+        "Header": {
+            "generator_id": "Miner_1",
+            "hash": "b4c579ad405a7c2e8675f6d91242d4727ede077dcb168ddf0f9e5accfb01f355",
+            "blockNo": 4
+        },
+        "Body": {
+            "transactions": [
+                "ROLLUP",
+                14,
+                "simulated_zk_proof",
+                2
+            ],
+            "nonce": 3588,
+            "previous_hash": [
+                "52a70bb22bda48c2c6f78adc7a7182bc02039ce36aa080b9513b27ff1d7a4d7f",
+                "52a70bb22bda48c2c6f78adc7a7182bc02039ce36aa080b9513b27ff1d7a4d7f"
+            ],
+            "timestamp": 1774471822.9835856
         }
     }
 }

@@ -254,8 +254,12 @@ class Miner:
         else:
             condition = blockchain_function == 3 and self.validate_transactions(
                 block['Body']['transactions'], "receiver")
-            if (blockchain_function != 3 or condition) and block['Body']['previous_hash'] == self.top_block['Header'][
-                'hash']:
+            
+            # DAG blocks (type 10) have a list of hashes (tips), so they pass the linear hash condition automatically here
+            # (they are validated structurally in dag_block_is_valid)
+            hash_condition = (block['Body']['previous_hash'] == self.top_block['Header']['hash']) if type_of_consensus != 10 else True
+            
+            if (blockchain_function != 3 or condition) and hash_condition:
                 if type_of_consensus == 6:
 
                     self.bft_respond(block,list_of_miners,blockchain_function,expected_chain_length)

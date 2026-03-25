@@ -99,7 +99,8 @@ def calculate_energy_consumption(consensus_name, duration_sec):
         'Delegated Proof of Stake (DPoS)': 12,
         'Practical Byzantine Fault Tolerance (PBFT)': 150, # Medium intensity due to high message overhead
         'Proof of Activity (PoA-Hybrid)': 500, # Hybrid takes significant PoW pre-step
-        'Proof of Burn (PoB)': 20
+        'Proof of Burn (PoB)': 20,
+        'Directed Acyclic Graph (DAG)': 2 # Extremely low overhead
     }
     
     consensus_power_w = consensus_power_map.get(consensus_name, 50)

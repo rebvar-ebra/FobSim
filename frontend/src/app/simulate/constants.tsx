@@ -67,6 +67,7 @@ export const CONSENSUS = [
   { id: 6, name: "PBFT", short: "PBFT", color: "#ef4444" },
   { id: 8, name: "Proof of Activity", short: "PoA-H", color: "#06b6d4" },
   { id: 9, name: "Proof of Burn", short: "PoB", color: "#eab308" },
+  { id: 10, name: "DAG (Tangle/Hashgraph)", short: "DAG", color: "#6366f1" },
 ];
 
 export const STEPS = ["Select Functions", "Configure Network", "Simulate Transactions", "Analyze Results"];
