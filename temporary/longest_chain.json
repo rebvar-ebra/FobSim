@@ -3,218 +3,57 @@
         "0": {
             "Header": {
                 "generator_id": "The Network",
-                "hash": "000a227600e69a725ae2876aa415a3e42c9888c498ba34bdd515ff79688da897",
+                "hash": "10d31a64585b815edb2c6c5409568865b281a49bd570e04981a9d67b06ab61b5",
                 "blockNo": 0
             },
             "Body": {
                 "transactions": [
                     "genesis_block",
                     "Miner_1",
-                    "Miner_2"
+                    "Miner_2",
+                    "Miner_3"
                 ],
-                "nonce": 9863,
+                "nonce": 0,
                 "previous_hash": 0,
-                "timestamp": 1774470259.2319171
+                "timestamp": 1774471350.1197517
             }
         },
         "1": {
             "Header": {
-                "generator_id": "Miner_2",
-                "hash": "000a3d950f4a19bb0c3023688ad0a967eb40528655253624bee389a481eaa293",
+                "generator_id": "Miner_1",
+                "hash": "cb8a43b84200bd75b033fe1504bbfa249923a1d07ac4f0dd72922560a6bf5d6b",
                 "blockNo": 1
             },
             "Body": {
                 "transactions": [
-                    "End-user address: 1.1",
-                    "Requested computational task: 102540*156839",
-                    "Result: 2",
-                    "miner: Miner_2"
+                    "ROLLUP",
+                    11,
+                    "simulated_zk_proof",
+                    2
                 ],
-                "nonce": 8172,
-                "previous_hash": "000a227600e69a725ae2876aa415a3e42c9888c498ba34bdd515ff79688da897",
-                "timestamp": 1774470260.389621
+                "nonce": 0,
+                "previous_hash": "10d31a64585b815edb2c6c5409568865b281a49bd570e04981a9d67b06ab61b5",
+                "timestamp": 1774471350.4294176
             }
         },
         "2": {
             "Header": {
-                "generator_id": "Miner_2",
-                "hash": "000b6f926fffb434142a4faf204cac74fc96314ccd09583d09625825e2f614f3",
+                "generator_id": "Miner_1",
+                "hash": "55ecf71669f5e1f2db407422a2fa8669c5c5fdfcb5d05882463432d1e48e08c6",
                 "blockNo": 2
             },
             "Body": {
                 "transactions": [
-                    "End-user address: 1.2",
-                    "Requested computational task: 152747*775302",
-                    "Result: 2",
-                    "miner: Miner_2"
+                    "ROLLUP",
+                    15,
+                    "simulated_zk_proof",
+                    2
                 ],
-                "nonce": 943,
-                "previous_hash": "000a3d950f4a19bb0c3023688ad0a967eb40528655253624bee389a481eaa293",
-                "timestamp": 1774470264.787409
-            }
-        },
-        "3": {
-            "Header": {
-                "generator_id": "Miner_2",
-                "hash": "000ec83be5aa8f26fa871fc8eb1ef18d2d8933ea479a807e8c17eeb8f2224178",
-                "blockNo": 3
-            },
-            "Body": {
-                "transactions": [
-                    "End-user address: 1.3",
-                    "Requested computational task: 73897/801089",
-                    "Result: 2",
-                    "miner: Miner_2"
-                ],
-                "nonce": 3523,
-                "previous_hash": "000b6f926fffb434142a4faf204cac74fc96314ccd09583d09625825e2f614f3",
-                "timestamp": 1774470268.5364838
-            }
-        },
-        "4": {
-            "Header": {
-                "generator_id": "Miner_2",
-                "hash": "000313551860881287ebc1f5d3519826f79272da8ba781809cf9b5d5b2262463",
-                "blockNo": 4
-            },
-            "Body": {
-                "transactions": [
-                    "End-user address: 1.4",
-                    "Requested computational task: 467867/187813",
-                    "Result: 2",
-                    "miner: Miner_2"
-                ],
-                "nonce": 7466,
-                "previous_hash": "000ec83be5aa8f26fa871fc8eb1ef18d2d8933ea479a807e8c17eeb8f2224178",
-                "timestamp": 1774470272.0219738
-            }
-        },
-        "5": {
-            "Header": {
-                "generator_id": "Miner_2",
-                "hash": "000009b68f1bd39139e987ec74bdc687f867629bf24d9447349e5bad0d202f32",
-                "blockNo": 5
-            },
-            "Body": {
-                "transactions": [
-                    "End-user address: 1.4",
-                    "Requested computational task: 972943*942219",
-                    "Result: 2",
-                    "miner: Miner_2"
-                ],
-                "nonce": 2065,
-                "previous_hash": "000313551860881287ebc1f5d3519826f79272da8ba781809cf9b5d5b2262463",
-                "timestamp": 1774470274.0937076
-            }
-        },
-        "6": {
-            "Header": {
-                "generator_id": "Miner_2",
-                "hash": "000bbaa65d3e909c0c1da9f31c51e7113384d094cccda5fbaee30f916de9ba81",
-                "blockNo": 6
-            },
-            "Body": {
-                "transactions": [
-                    "End-user address: 2.2",
-                    "Requested computational task: 900286*399358",
-                    "Result: 2",
-                    "miner: Miner_2"
-                ],
-                "nonce": 3493,
-                "previous_hash": "000009b68f1bd39139e987ec74bdc687f867629bf24d9447349e5bad0d202f32",
-                "timestamp": 1774470279.7704709
-            }
-        },
-        "7": {
-            "Header": {
-                "generator_id": "Miner_2",
-                "hash": "000449a1ac8d2f585111c381409c718144a2c9e085404898d9231e9b4a80a56a",
-                "blockNo": 7
-            },
-            "Body": {
-                "transactions": [
-                    "End-user address: 2.3",
-                    "Requested computational task: 783558/150195",
-                    "Result: 2",
-                    "miner: Miner_2"
-                ],
-                "nonce": 24,
-                "previous_hash": "000bbaa65d3e909c0c1da9f31c51e7113384d094cccda5fbaee30f916de9ba81",
-                "timestamp": 1774470282.2635942
-            }
-        },
-        "8": {
-            "Header": {
-                "generator_id": "Miner_2",
-                "hash": "000f7df81ab1cff0223b8cc97a0c9627491560fc955f04cc72a39dea95dd817e",
-                "blockNo": 8
-            },
-            "Body": {
-                "transactions": [
-                    "End-user address: 2.3",
-                    "Requested computational task: 249174/432075",
-                    "Result: 2",
-                    "miner: Miner_2"
-                ],
-                "nonce": 1658,
-                "previous_hash": "000449a1ac8d2f585111c381409c718144a2c9e085404898d9231e9b4a80a56a",
-                "timestamp": 1774470284.926885
-            }
-        },
-        "9": {
-            "Header": {
-                "generator_id": "Miner_2",
-                "hash": "000abdc0a6987b65c4d632d5193a1f04d7fe797b7ddffe84f9646866840e6e31",
-                "blockNo": 9
-            },
-            "Body": {
-                "transactions": [
-                    "End-user address: 2.4",
-                    "Requested computational task: 546515/684376",
-                    "Result: 2",
-                    "miner: Miner_2"
-                ],
-                "nonce": 10831,
-                "previous_hash": "000f7df81ab1cff0223b8cc97a0c9627491560fc955f04cc72a39dea95dd817e",
-                "timestamp": 1774470287.6687005
-            }
-        },
-        "10": {
-            "Header": {
-                "generator_id": "Miner_2",
-                "hash": "000cf613dafdbad466983aeb5d54c958744a8fded93c32b6bf390baadbfc2d4c",
-                "blockNo": 10
-            },
-            "Body": {
-                "transactions": [
-                    "End-user address: 2.5",
-                    "Requested computational task: 641257/622417",
-                    "Result: 2",
-                    "miner: Miner_2"
-                ],
-                "nonce": 692,
-                "previous_hash": "000abdc0a6987b65c4d632d5193a1f04d7fe797b7ddffe84f9646866840e6e31",
-                "timestamp": 1774470290.9108126
-            }
-        },
-        "11": {
-            "Header": {
-                "generator_id": "Miner_2",
-                "hash": "000dcbaaeae97a290deb183abb52a7ffb164b7c7af87ddbfd789c2219b4bb10c",
-                "blockNo": 11
-            },
-            "Body": {
-                "transactions": [
-                    "End-user address: 2.5",
-                    "Requested computational task: 156259*73994",
-                    "Result: 2",
-                    "miner: Miner_2"
-                ],
-                "nonce": 1130,
-                "previous_hash": "000cf613dafdbad466983aeb5d54c958744a8fded93c32b6bf390baadbfc2d4c",
-                "timestamp": 1774470294.0103714
+                "nonce": 0,
+                "previous_hash": "cb8a43b84200bd75b033fe1504bbfa249923a1d07ac4f0dd72922560a6bf5d6b",
+                "timestamp": 1774471353.9734774
             }
         }
     },
-    "from": "Miner_1"
+    "from": "Miner_2"
 }

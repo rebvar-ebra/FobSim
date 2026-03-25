@@ -3,10 +3,10 @@
 import React, { useState } from "react";
 import { CLOUD_PROVIDERS, calculateEstimatedCost } from "../../utils/cloud_pricing";
 import { CloudLogoAWS, CloudLogoGCP, CloudLogoAzure } from "../constants";
-import { Settings2, Globe, ShieldCheck, ChevronRight } from "lucide-react";
+import { Settings2, Globe, ShieldCheck, ChevronRight, Layers } from "lucide-react";
 
 interface ParameterConfigProps {
-  config: { fog: number; miners: number; tx: number; diff: number; byzantine: number; attackType: number };
+  config: { fog: number; miners: number; tx: number; diff: number; byzantine: number; attackType: number; layer2Enabled: boolean; layer2BatchSize: number };
   setConfig: (config: any) => void;
   selectedCloud: string;
   setSelectedCloud: (id: string) => void;
@@ -115,6 +115,31 @@ export default function ParameterConfig({ config, setConfig, selectedCloud, setS
               style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 20, fontWeight: 700, outline: "none", color: "#0f172a" }} />
           </div>
         ))}
+      </div>
+
+      <div className="flex items-center gap-3 mb-4 mt-6">
+        <Layers size={18} className="text-indigo-500" />
+        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-tight">Layer 2 Scaling (Rollups)</h3>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="p-4 bg-white border border-indigo-100 rounded-2xl hover:border-indigo-200 transition group flex items-center justify-between">
+          <div>
+            <label style={{ fontSize: 10, fontWeight: 700, color: "#6366f1", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Enable Rollups</label>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#4338ca" }}>{config.layer2Enabled ? "Active" : "Disabled"}</span>
+          </div>
+          <button 
+            onClick={() => setConfig({ ...config, layer2Enabled: !config.layer2Enabled })}
+            className={`w-12 h-6 rounded-full flex items-center transition-colors ${config.layer2Enabled ? 'bg-indigo-500' : 'bg-slate-200'}`}
+          >
+            <div className={`w-4 h-4 rounded-full bg-white mx-1 transition-transform ${config.layer2Enabled ? 'translate-x-6' : 'translate-x-0'}`} />
+          </button>
+        </div>
+        <div className={`p-4 bg-white border border-indigo-100 rounded-2xl transition group ${!config.layer2Enabled ? 'opacity-50 pointer-events-none' : 'hover:border-indigo-200'}`}>
+          <label style={{ fontSize: 10, fontWeight: 700, color: "#6366f1", display: "block", marginBottom: 6, textTransform: "uppercase" }}>L2 Batch Size</label>
+          <input type="number" value={config.layer2BatchSize} onChange={e => setConfig({ ...config, layer2BatchSize: +e.target.value })} disabled={!config.layer2Enabled}
+            style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 18, fontWeight: 700, outline: "none", color: "#4338ca", background: "transparent" }} />
+        </div>
       </div>
 
       <div className="flex items-center gap-3 mb-4 mt-6">

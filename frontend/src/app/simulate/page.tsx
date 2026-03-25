@@ -17,7 +17,7 @@ export default function Dashboard() {
   const [selectedFunc, setSelectedFunc] = useState(0);
   const [selectedCons, setSelectedCons] = useState(0);
   const [placement, setPlacement] = useState(1);
-  const [config, setConfig] = useState({ fog: 5, miners: 4, tx: 5, diff: 2, byzantine: 0, attackType: 0 });
+  const [config, setConfig] = useState({ fog: 5, miners: 4, tx: 5, diff: 2, byzantine: 0, attackType: 0, layer2Enabled: false, layer2BatchSize: 100 });
   const [selectedCloud, setSelectedCloud] = useState(CLOUD_PROVIDERS[0].id);
   const [running, setRunning] = useState(false);
   const [output, setOutput] = useState<string[]>([]);
@@ -47,7 +47,9 @@ export default function Dashboard() {
           tx: data.numOfTXperBlock || 5,
           diff: data.puzzle_difficulty || 2,
           byzantine: data.Byzantine_nodes || 0,
-          attackType: data.Attack_type || 0
+          attackType: data.Attack_type || 0,
+          layer2Enabled: data.Layer2_Rollup_Enabled || false,
+          layer2BatchSize: data.Layer2_Batch_Size || 100
         });
         setConfigError(null);
       })
@@ -111,7 +113,9 @@ export default function Dashboard() {
             numOfTXperBlock: config.tx,
             puzzle_difficulty: config.diff,
             Byzantine_nodes: config.byzantine,
-            Attack_type: config.attackType
+            Attack_type: config.attackType,
+            Layer2_Rollup_Enabled: config.layer2Enabled,
+            Layer2_Batch_Size: config.layer2BatchSize
           }
         }),
       });
@@ -150,7 +154,9 @@ export default function Dashboard() {
         numOfTXperBlock: config.tx,
         puzzle_difficulty: config.diff,
         Byzantine_nodes: config.byzantine,
-        Attack_type: config.attackType
+        Attack_type: config.attackType,
+        Layer2_Rollup_Enabled: config.layer2Enabled,
+        Layer2_Batch_Size: config.layer2BatchSize
       })
     });
     alert("Settings saved to Sim_parameters.json!");

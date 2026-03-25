@@ -101,6 +101,8 @@ class SimConfig(BaseModel):
     STOR_PLC: int = 0
     Byzantine_nodes: int = 0
     Attack_type: int = 0
+    Layer2_Rollup_Enabled: bool = False
+    Layer2_Batch_Size: int = 100
 
 
 class RunSimulation(BaseModel):
@@ -153,7 +155,7 @@ async def update_config(config: SimConfig):
             existing_config = json.load(f)
 
         # Merge new values
-        new_vals = config.dict(exclude_unset=True)
+        new_vals = config.model_dump(exclude_unset=True)
         existing_config.update(new_vals)
 
         with open(config_path, "w") as f:
@@ -260,7 +262,7 @@ async def run_simulation(
             with open(config_path, "r") as f:
                 existing_config = json.load(f)
 
-            new_vals = params.config.dict(exclude_unset=True)
+            new_vals = params.config.model_dump(exclude_unset=True)
             existing_config.update(new_vals)
 
             with open(config_path, "w") as f:
@@ -275,7 +277,7 @@ async def run_simulation(
         placement="Fog" if params.blockchain_placement == 1 else "End User",
         consensus=CONSENSUS_ALGORITHMS.get(params.consensus_algorithm),
         status="running",
-        config=params.config.dict() if params.config else {}
+        config=params.config.model_dump() if params.config else {}
     )
     db.add(db_sim)
     db.commit()
@@ -509,7 +511,8 @@ async def execute_simulation(blockchain_function: int, placement: int, consensus
                             if duration > 0:
                                 # Throughput (TPS)
                                 tx_per_block = sim.config.get('numOfTXperBlock', 5) if sim.config else 5
-                                sim.throughput = round((total_blocks * tx_per_block) / duration, 4)
+                                l2_multiplier = sim.config.get('Layer2_Batch_Size', 100) if (sim.config and sim.config.get('Layer2_Rollup_Enabled')) else 1
+                                sim.throughput = round((total_blocks * tx_per_block * l2_multiplier) / duration, 4)
 
                                 # Latency (Sec per Block)
                                 sim.latency = round(duration / total_blocks, 4)

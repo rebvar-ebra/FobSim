@@ -128,7 +128,12 @@ class Miner:
 
         if list_of_new_transactions:
             for key in user_wallets_temporary_file:
-                for transaction in list_of_new_transactions:
+                # We need a copy or carefully handle modification if we don't modify the list while iterating.
+                # Actually, the original code modifies list_of_new_transactions while iterating.
+                for transaction in list_of_new_transactions[:]:
+                    if isinstance(transaction, list) and transaction[0] == "ROLLUP":
+                        continue
+                        
                     if miner_role == "receiver":
                         if key == f"{str(transaction[1])}.{str(transaction[2])}":
                             if user_wallets_temporary_file[key]['wallet_value'] >= transaction[0]:
@@ -137,11 +142,17 @@ class Miner:
                                 return False
                         if key == f"{str(transaction[3])}.{str(transaction[4])}":
                             user_wallets_temporary_file[key]['wallet_value'] += transaction[0]
-                if miner_role == "generator" and key == f"{str(transaction[1])}.{str(transaction[2])}" and \
+                            
+                for transaction in list_of_new_transactions[:]:
+                    if isinstance(transaction, list) and transaction[0] == "ROLLUP":
+                        continue
+                        
+                    if miner_role == "generator" and key == f"{str(transaction[1])}.{str(transaction[2])}" and \
                             user_wallets_temporary_file[key]['wallet_value'] < transaction[0]:
                         output.illegal_tx(
                             transaction, user_wallets_temporary_file[key]['wallet_value'])
-                        list_of_new_transactions.remove(transaction)
+                        if transaction in list_of_new_transactions:
+                            list_of_new_transactions.remove(transaction)
                         break
         if miner_role == "generator":
             return list_of_new_transactions

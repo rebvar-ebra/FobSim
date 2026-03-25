@@ -2,7 +2,7 @@
   "NumOfFogNodes": 2,
   "num_of_users_per_fog_node": 5,
   "NumOfTaskPerUser": 5,
-  "NumOfMiners": 2,
+  "NumOfMiners": 3,
   "number_of_each_miner_neighbours": 3,
   "numOfTXperBlock": 3,
   "puzzle_difficulty": 3,
@@ -19,5 +19,7 @@
   "Num_of_DPoS_delegates": 2,
   "STOR_PLC(0=in the Fog,1=in the BC)": 1,
   "Byzantine_nodes": 1,
-  "Attack_type": 2
+  "Attack_type": 1,
+  "Layer2_Rollup_Enabled": true,
+  "Layer2_Batch_Size": 100
 }
