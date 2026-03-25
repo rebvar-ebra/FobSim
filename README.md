@@ -115,6 +115,8 @@ sudo docker run -it fobsim
 
 4- Computational Services through Smart Contracts
 
+5- NEW: Federated Learning (FL) Aggregation
+
 # The Blockchain in FoBSim allows the use of one of the following Consensus algorithms during each run:
 1- Proof-of-Work (PoW)
 
@@ -125,6 +127,11 @@ sudo docker run -it fobsim
 4- NEW: Proof-of-Elapsed-Time (PoET)
 
 5- NEW: delegated Proof-of-Stack (dPoS)
+
+6- NEW: Directed Acyclic Graph (DAG) (Tangle/Hashgraph)
+
+# NEW: Layer 2 Scaling & State Channels
+FoBSim now supports simulating high-throughput off-chain transactions. When **Layer 2 Rollups** are enabled, the Fog nodes act as L2 Sequencers, batching user transactions and posting bundled zero-knowledge "proofs" to the L1 mempool, drastically increasing simulated TPS metrics and drastically mirroring modern Ethereum L2 architectures.
 
 # Running FoBSim simulation:
 After you clone the repository as clarified above, modify the 'Sim_parameters.json' either directly or on the command line (using e.g. vim or nano tools)
