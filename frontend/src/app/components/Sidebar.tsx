@@ -10,7 +10,8 @@ import {
   LogOut,
   User,
   Box,
-  LayoutDashboard
+  LayoutDashboard,
+  Rocket
 } from "lucide-react";
 
 import { useState, useEffect } from "react";
@@ -49,6 +50,7 @@ export default function Sidebar() {
     { name: "Simulation", icon: <PlayCircle size={20} />, path: "/simulate" },
     { name: "History", icon: <History size={20} />, path: "/results" },
     { name: "Analytics", icon: <BarChart3 size={20} />, path: "/analytics" },
+    { name: "Roadmap", icon: <Rocket size={20} />, path: "/roadmap" },
     { name: "Settings", icon: <Settings size={20} />, path: "/settings" },
   ];
 
