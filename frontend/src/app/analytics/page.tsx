@@ -181,6 +181,34 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
+          {/* Card 5: Energy Consumption (Green Blockchain) */}
+          <div className="lg:col-span-2 bg-slate-900/50 border border-slate-800 p-8 rounded-3xl backdrop-blur-sm relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+              <Zap size={80} className="text-emerald-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+              <Zap className="text-emerald-400" size={20} /> Energy Consumption (Estimated kWh)
+            </h3>
+            <div className="h-80 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={10} tick={{fill: '#64748b'}} />
+                  <YAxis stroke="#64748b" fontSize={12} label={{ value: 'kWh', angle: -90, position: 'insideLeft', fill: '#64748b' }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                    itemStyle={{ color: '#fff' }}
+                  />
+                  <Bar dataKey="energy" radius={[4, 4, 0, 0]}>
+                    {data.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.energy > 0.1 ? '#f87171' : '#10b981'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
           {/* Card 3: Detailed Insights */}
           <div className="lg:col-span-2 bg-slate-900/50 border border-slate-800 p-8 rounded-3xl backdrop-blur-sm">
             <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-2">
@@ -196,12 +224,10 @@ export default function AnalyticsPage() {
 
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-700/30">
-                        <div className="text-[10px] text-slate-500 uppercase">Throughput</div>
-                        <div className="text-sm font-bold text-cyan-400">{item.throughput} TPS</div>
-                    </div>
-                    <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-700/30">
-                        <div className="text-[10px] text-slate-500 uppercase">Latency</div>
-                        <div className="text-sm font-bold text-rose-400">{item.latency}s</div>
+                        <div className="text-[10px] text-slate-500 uppercase">CO2 Footprint</div>
+                        <div className={`text-sm font-bold ${item.energy > 0.1 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                          {(item.energy * 0.4).toFixed(4)} kg
+                        </div>
                     </div>
                   </div>
 

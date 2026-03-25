@@ -34,5 +34,6 @@ class Simulation(Base):
     consistency = Column(Float, default=100.0) # Percentage
     latency = Column(Float, default=0.0)      # Average block time (sec)
     throughput = Column(Float, default=0.0)   # Transactions per second (TPS)
+    energy_used = Column(Float, default=0.0)  # Estimated energy in kWh
 
     user = relationship("User", back_populates="simulations")

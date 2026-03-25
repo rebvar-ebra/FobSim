@@ -99,6 +99,8 @@ class SimConfig(BaseModel):
     Asymmetric_key_length: int = 512
     Num_of_DPoS_delegates: int = 2
     STOR_PLC: int = 0
+    Byzantine_nodes: int = 0
+    Attack_type: int = 0
 
 
 class RunSimulation(BaseModel):
@@ -177,7 +179,8 @@ async def get_simulations(db: Session = Depends(get_db), current_user: models.Us
             "started_at": s.started_at.isoformat(),
             "ended_at": s.ended_at.isoformat() if s.ended_at else None,
             "blocks_mined": s.blocks_mined,
-            "avg_cpu": round(s.avg_cpu, 2)
+            "avg_cpu": round(s.avg_cpu, 2),
+            "energy_used": round(s.energy_used or 0, 6)
         } for s in sims
     ]
 
@@ -194,6 +197,7 @@ async def get_comparison_data(db: Session = Depends(get_db), current_user: model
         func.avg(models.Simulation.consistency).label('avg_consistency'),
         func.avg(models.Simulation.throughput).label('avg_throughput'),
         func.avg(models.Simulation.latency).label('avg_latency'),
+        func.avg(models.Simulation.energy_used).label('avg_energy'),
         func.count(models.Simulation.id).label('run_count')
     ).filter(models.Simulation.user_id == current_user.id)\
      .group_by(models.Simulation.consensus).all()
@@ -218,6 +222,7 @@ async def get_comparison_data(db: Session = Depends(get_db), current_user: model
             "consistency": round(float(s.avg_consistency), 2),
             "throughput": round(float(s.avg_throughput or 0), 2),
             "latency": round(float(s.avg_latency or 0), 4),
+            "energy": round(float(s.avg_energy or 0), 6),
             "bps": round(avg_bps, 4),
             "runs": s.run_count
         })
@@ -516,6 +521,14 @@ async def execute_simulation(blockchain_function: int, placement: int, consensus
                     # 3. CPU Load
                     if cpu_readings:
                         sim.avg_cpu = sum(cpu_readings) / len(cpu_readings)
+
+                    # 4. Energy Consumption
+                    import sys
+                    sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+                    import blockchain as bc_core
+                    duration_sec = (sim.ended_at - sim.started_at).total_seconds()
+                    sim.energy_used = bc_core.calculate_energy_consumption(sim.consensus, duration_sec)
+
                 else:
                     # Fallback to line counting if no chains found
                     blocks = 0

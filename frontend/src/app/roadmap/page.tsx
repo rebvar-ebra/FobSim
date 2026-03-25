@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Rocket, Shield, Zap, Cpu, Layers, Activity, Globe } from "lucide-react";
+import { Box, Rocket, Shield, Zap, Cpu, Layers, Activity, Globe, Brain, Key, Package, Laptop, Database } from "lucide-react";
 
 const RoadmapPage = () => {
   const roadmapItems = [
@@ -45,6 +45,41 @@ const RoadmapPage = () => {
       icon: <Activity className="text-lime-400" size={24} />,
       description: "Visualize estimated energy consumption of consensus algorithms based on real CPU/RAM resource usage.",
       details: ["Energy modeling equations", "Sustainability metrics", "Eco-friendly scoring"]
+    },
+    {
+      title: "Federated Learning & Blockchain",
+      status: "Backlog",
+      icon: <Brain className="text-pink-400" size={24} />,
+      description: "Enable fog nodes to collaboratively train AI models, using blockchain for model update integrity and rewards.",
+      details: ["Decentralized AI training", "Model gradient encryption", "Collaborative incentive models"]
+    },
+    {
+      title: "Zero-Knowledge Proofs (ZKP)",
+      status: "Planned",
+      icon: <Key className="text-indigo-400" size={24} />,
+      description: "Integrate ZKPs to allow privacy-preserving task completion proofs without revealing sensitive data.",
+      details: ["Privacy-preserving validation", "Computational overhead analysis", "Stealth edge transactions"]
+    },
+    {
+      title: "Proof of Useful Work (PoUW)",
+      status: "Research",
+      icon: <Laptop className="text-orange-400" size={24} />,
+      description: "Replace useless puzzles with productive tasks like scientific computing or 3D rendering for network security.",
+      details: ["Productive mining puzzle", "Resource utilization metrics", "Economic value modelling"]
+    },
+    {
+      title: "Post-Quantum Cryptography",
+      status: "Discovery",
+      icon: <Package className="text-rose-400" size={24} />,
+      description: "Simulate the impact of lattice-based signature algorithms on block size and network verification latency.",
+      details: ["Quantum-resistant signatures", "Throughput impact analysis", "Cryptographic agility"]
+    },
+    {
+      title: "Decentralized Storage Simulation",
+      status: "Concept",
+      icon: <Database className="text-blue-400" size={24} />,
+      description: "Model an IPFS-style storage layer sharded across fog nodes with blockchain-secured hash-integrity.",
+      details: ["Sharded file retrieval", "Data redundancy logic", "Integrity validation speed"]
     }
   ];
 

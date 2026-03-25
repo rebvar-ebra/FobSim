@@ -81,3 +81,30 @@ def fork_analysis(list_of_miners):
             chain_versions.append(hashed_chain)
     output.fork_analysis(len(chain_versions))
     modification.write_file('temporary/forking_log.json', {"Number of times a fork appeared": len(chain_versions) - 1})
+
+def calculate_energy_consumption(consensus_name, duration_sec):
+    """
+    Simulated energy consumption modeling (kWh)
+    Consensus types have different energy profiles.
+    """
+    # Base Power for Fog Nodes (approx 50W per node)
+    base_power_w = 50 * data.get("NumOfFogNodes", 1)
+    
+    # Consensus Power overhead
+    consensus_power_map = {
+        'Proof of Work (PoW)': 1000, # High intensity
+        'Proof of Stake (PoS)': 10,
+        'Proof of Authority (PoA)': 5,
+        'Proof of Elapsed Time (PoET)': 8,
+        'Delegated Proof of Stake (DPoS)': 12,
+        'Practical Byzantine Fault Tolerance (PBFT)': 150, # Medium intensity due to high message overhead
+        'Proof of Activity (PoA-Hybrid)': 500, # Hybrid takes significant PoW pre-step
+        'Proof of Burn (PoB)': 20
+    }
+    
+    consensus_power_w = consensus_power_map.get(consensus_name, 50)
+    total_power_w = base_power_w + consensus_power_w
+    
+    # Convert W to kW and sec to h (kWh = kW * h)
+    energy_kwh = (total_power_w / 1000) * (duration_sec / 3600)
+    return round(energy_kwh, 6)

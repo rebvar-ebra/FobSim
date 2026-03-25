@@ -17,7 +17,7 @@ export default function Dashboard() {
   const [selectedFunc, setSelectedFunc] = useState(0);
   const [selectedCons, setSelectedCons] = useState(0);
   const [placement, setPlacement] = useState(1);
-  const [config, setConfig] = useState({ fog: 5, miners: 4, tx: 5, diff: 2 });
+  const [config, setConfig] = useState({ fog: 5, miners: 4, tx: 5, diff: 2, byzantine: 0, attackType: 0 });
   const [selectedCloud, setSelectedCloud] = useState(CLOUD_PROVIDERS[0].id);
   const [running, setRunning] = useState(false);
   const [output, setOutput] = useState<string[]>([]);
@@ -45,7 +45,9 @@ export default function Dashboard() {
           fog: data.NumOfFogNodes || 5,
           miners: data.NumOfMiners || 4,
           tx: data.numOfTXperBlock || 5,
-          diff: data.puzzle_difficulty || 2
+          diff: data.puzzle_difficulty || 2,
+          byzantine: data.Byzantine_nodes || 0,
+          attackType: data.Attack_type || 0
         });
         setConfigError(null);
       })
@@ -107,7 +109,9 @@ export default function Dashboard() {
             NumOfFogNodes: config.fog,
             NumOfMiners: config.miners,
             numOfTXperBlock: config.tx,
-            puzzle_difficulty: config.diff
+            puzzle_difficulty: config.diff,
+            Byzantine_nodes: config.byzantine,
+            Attack_type: config.attackType
           }
         }),
       });
@@ -144,7 +148,9 @@ export default function Dashboard() {
         NumOfFogNodes: config.fog,
         NumOfMiners: config.miners,
         numOfTXperBlock: config.tx,
-        puzzle_difficulty: config.diff
+        puzzle_difficulty: config.diff,
+        Byzantine_nodes: config.byzantine,
+        Attack_type: config.attackType
       })
     });
     alert("Settings saved to Sim_parameters.json!");

@@ -7,8 +7,9 @@ import modification
 
 
 class Miner:
-    def __init__(self, address, trans_delay, gossiping):
+    def __init__(self, address, trans_delay, gossiping, attack_type=0):
         self.address = f"Miner_{str(address)}"
+        self.attack_type = attack_type
         self.top_block = {}
         self.isAuthorized = False
         self.next_pos_block_from = self.address
@@ -49,9 +50,22 @@ class Miner:
                                 expected_chain_length, AI_assisted_mining_wanted):
         if accumulated_transactions := new_consensus_module.accumulate_transactions(num_of_tx_per_block, mempool,
                                                                                     blockchain_function, self.address):
-            transactions = accumulated_transactions
             new_block = self.abstract_block_building(
-                blockchain_function, transactions, miner_list, type_of_consensus, AI_assisted_mining_wanted)
+                blockchain_function, accumulated_transactions, miner_list, type_of_consensus, AI_assisted_mining_wanted)
+            
+            if self.adversary:
+                if self.attack_type == 1: # Double Spend
+                    # Simulate double spend by including a very old transaction from genesis
+                    # or just tampering with a transaction value to be massive
+                    if new_block['Body']['transactions']:
+                        new_block['Body']['transactions'][0] = (999999, "MALICIOUS", 0, "ATTACKER", 1)
+                elif self.attack_type == 2: # Invalid Hash
+                    new_block['Body']['previous_hash'] = "MALICIOUS_HASH_TAMPER"
+                
+                # Re-hash after tampering (or skip re-hashing for invalid hash attack)
+                if self.attack_type == 1:
+                    new_block['Header']['hash'] = encryption_module.hashing_function(new_block['Body'])
+
             output.block_info(new_block, type_of_consensus)
             time.sleep(self.trans_delay)
             for elem in miner_list:

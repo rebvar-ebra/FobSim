@@ -10,7 +10,9 @@ import {
   StopCircle,
   RefreshCw,
   Cpu,
-  Box
+  Box,
+  Zap,
+  ShieldAlert
 } from "lucide-react";
 import { API_URL } from "../api";
 
@@ -101,6 +103,11 @@ export default function ResultsPage() {
                   <td className="px-6 py-5">
                     <p className="font-bold text-white">{item.function}</p>
                     <p className="text-xs text-slate-500">{item.placement} Layer</p>
+                    {item.config?.Byzantine_nodes > 0 && (
+                      <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-red-400 uppercase">
+                        <ShieldAlert size={10} /> {item.config.Byzantine_nodes} Adversarial Nodes
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-5 underline text-cyan-400">
                     {item.consensus}
@@ -122,6 +129,9 @@ export default function ResultsPage() {
                       </div>
                       <div className="flex items-center gap-1 text-cyan-400">
                         <Cpu size={14} /> {item.avg_cpu}%
+                      </div>
+                      <div className="flex items-center gap-1 text-emerald-400">
+                        <Zap size={14} /> {item.energy_used} kWh
                       </div>
                     </div>
                   </td>

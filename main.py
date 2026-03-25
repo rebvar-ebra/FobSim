@@ -36,6 +36,8 @@ delay_between_end_users = data["delay_between_end_users"]
 poet_block_time = data['poet_block_time']
 Asymmetric_key_length = data['Asymmetric_key_length']
 number_of_DPoS_delegates = data['Num_of_DPoS_delegates']
+Byzantine_nodes = data.get('Byzantine_nodes', 0)
+Attack_type = data.get('Attack_type', 0)
 user_informed = False
 
 
@@ -95,10 +97,18 @@ def initiate_miners():
     the_miners_list = []
 
     if blockchainPlacement == 1:
-        the_miners_list.extend(miner.Miner(i + 1, trans_delay, gossip_activated) for i in range(NumOfFogNodes))
+        the_miners_list.extend(miner.Miner(i + 1, trans_delay, gossip_activated, Attack_type) for i in range(NumOfFogNodes))
 
     if blockchainPlacement == 2:
-        the_miners_list.extend(miner.Miner(i + 1, trans_delay, gossip_activated) for i in range(NumOfMiners))
+        the_miners_list.extend(miner.Miner(i + 1, trans_delay, gossip_activated, Attack_type) for i in range(NumOfMiners))
+
+    # Assign Byzantine status to a subset of miners
+    if Byzantine_nodes > 0:
+        malicious_count = min(Byzantine_nodes, len(the_miners_list))
+        malicious_miners = random.sample(the_miners_list, malicious_count)
+        for m in malicious_miners:
+            m.adversary = True
+        print(f'{malicious_count} miners have been set as Byzantine (Attack Type: {Attack_type})')
 
     for entity in the_miners_list:
         modification.write_file(f"temporary/{entity.address}_local_chain.json", {})

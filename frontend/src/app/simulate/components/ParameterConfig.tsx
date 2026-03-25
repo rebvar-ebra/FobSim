@@ -6,7 +6,7 @@ import { CloudLogoAWS, CloudLogoGCP, CloudLogoAzure } from "../constants";
 import { Settings2, Globe, ShieldCheck, ChevronRight } from "lucide-react";
 
 interface ParameterConfigProps {
-  config: { fog: number; miners: number; tx: number; diff: number };
+  config: { fog: number; miners: number; tx: number; diff: number; byzantine: number; attackType: number };
   setConfig: (config: any) => void;
   selectedCloud: string;
   setSelectedCloud: (id: string) => void;
@@ -115,6 +115,31 @@ export default function ParameterConfig({ config, setConfig, selectedCloud, setS
               style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 20, fontWeight: 700, outline: "none", color: "#0f172a" }} />
           </div>
         ))}
+      </div>
+
+      <div className="flex items-center gap-3 mb-4 mt-6">
+        <ShieldCheck size={18} className="text-red-500" />
+        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-tight">Security & Resilience</h3>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="p-4 bg-white border border-red-100 rounded-2xl hover:border-red-200 transition group">
+          <label style={{ fontSize: 10, fontWeight: 700, color: "#f87171", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Malicious Nodes</label>
+          <input type="number" value={config.byzantine} onChange={e => setConfig({ ...config, byzantine: +e.target.value })}
+            style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 18, fontWeight: 700, outline: "none", color: "#991b1b" }} />
+        </div>
+        <div className="p-4 bg-white border border-red-100 rounded-2xl hover:border-red-200 transition group">
+          <label style={{ fontSize: 10, fontWeight: 700, color: "#f87171", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Attack Strategy</label>
+          <select 
+            value={config.attackType} 
+            onChange={e => setConfig({ ...config, attackType: +e.target.value })}
+            style={{ width: "100%", border: "none", background: "transparent", fontSize: 14, fontWeight: 600, outline: "none", color: "#991b1b", padding: "8px 0" }}
+          >
+            <option value={0}>None</option>
+            <option value={1}>Double Spending</option>
+            <option value={2}>Invalid Hash</option>
+          </select>
+        </div>
       </div>
 
       <div className="mt-4 p-5 rounded-2xl bg-[#0f1021] text-white flex items-center justify-between shadow-xl">
