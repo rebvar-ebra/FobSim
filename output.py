@@ -118,7 +118,8 @@ def choose_functionality():
           "(1) Data Management\n"
           "(2) Computational services\n"
           "(3) Payment\n"
-          "(4) Identity Management\n")
+          "(4) Identity Management\n"
+          "(5) Federated Learning\n")
 
 
 def choose_placement():
