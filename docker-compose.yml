@@ -9,6 +9,8 @@ services:
       - "8000:8000"
     volumes:
       - ./Sim_parameters.json:/app/../Sim_parameters.json
+    env_file:
+      - ./api/.env
     restart: always
 
   frontend:
