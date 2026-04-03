@@ -18,7 +18,7 @@ services:
     name: fobsim-frontend
     env: docker
     dockerContext: frontend
-    dockerfilePath: Dockerfile
+    dockerfilePath: frontend/Dockerfile
     plan: free
     envVars:
       - key: NEXT_PUBLIC_API_URL
