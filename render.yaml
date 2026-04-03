@@ -1,0 +1,34 @@
+services:
+  # Backend API Service
+  - type: web
+    name: fobsim-backend
+    env: docker
+    dockerContext: .
+    dockerfilePath: api/Dockerfile
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Set this in the Render dashboard
+      - key: PORT
+        value: 8000
+
+  # Frontend Next.js Service
+  - type: web
+    name: fobsim-frontend
+    env: docker
+    dockerContext: .
+    dockerfilePath: frontend/Dockerfile
+    plan: free
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: fobsim-backend
+          type: web
+          property: host
+    dockerBuildArgs:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: fobsim-backend
+          type: web
+          property: host
