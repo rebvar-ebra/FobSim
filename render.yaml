@@ -27,7 +27,7 @@ services:
           type: web
           property: host
     dockerBuildArgs:
-      - key: NEXT_PUBLIC_API_URL
+      NEXT_PUBLIC_API_URL:
         fromService:
           name: fobsim-backend
           type: web

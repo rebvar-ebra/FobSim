@@ -1,9 +1,14 @@
 "use client";
 
 export const getApiUrl = () => {
-  // Check for the production environment variable first
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
+  let url = process.env.NEXT_PUBLIC_API_URL;
+
+  // If provided, ensure it has a protocol
+  if (url) {
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      url = `https://${url}`;
+    }
+    return url;
   }
 
   if (typeof window !== "undefined") {
@@ -12,8 +17,8 @@ export const getApiUrl = () => {
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return "http://localhost:8000";
     }
-    // Fallback for IP-based access
-    return `http://${hostname}:8000`;
+    // Fallback: Default to HTTPS for remote environments if protocol is unknown
+    return `https://${hostname}:8000`;
   }
   return "http://localhost:8000";
 };
