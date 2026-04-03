@@ -1,25 +1,36 @@
 "use client";
 
 export const getApiUrl = () => {
+  // 1. Try the baked-in build-time variable
   let url = process.env.NEXT_PUBLIC_API_URL;
 
-  // If provided, ensure it has a protocol
+  // 2. If missing, look for it in the window object (if we inject it later)
+  if (!url && typeof window !== 'undefined' && (window as any)._env_?.NEXT_PUBLIC_API_URL) {
+    url = (window as any)._env_.NEXT_PUBLIC_API_URL;
+  }
+
+  // 3. Ensure the URL has a protocol and is NOT pointing to the frontend itself
   if (url) {
     if (!url.startsWith("http://") && !url.startsWith("https://")) {
       url = `https://${url}`;
     }
-    return url;
+    // Remove trailing slash if present
+    return url.replace(/\/$/, "");
   }
 
+  // 4. Final Fallback for Local vs Production
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname;
-    // Handle both development and production scenarios
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return "http://localhost:8000";
     }
-    // Fallback: Default to HTTPS for remote environments if protocol is unknown
-    return `https://${hostname}:8000`;
+    
+    // IMPORTANT: If we are on Render but NEXT_PUBLIC_API_URL is missing,
+    // we default to the predictable Render naming convention
+    const backendHost = hostname.replace('frontend', 'backend');
+    return `https://${backendHost}`;
   }
+  
   return "http://localhost:8000";
 };
 
