@@ -22,13 +22,4 @@ services:
     plan: free
     envVars:
       - key: NEXT_PUBLIC_API_URL
-        fromService:
-          name: fobsim-backend
-          type: web
-          property: host
-    dockerBuildArgs:
-      NEXT_PUBLIC_API_URL:
-        fromService:
-          name: fobsim-backend
-          type: web
-          property: host
+        sync: false # Manually set this to the Backend's external URL in the dashboard
