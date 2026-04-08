@@ -1,5 +1,5 @@
 import React from "react";
-import { Play, Square, rotateCcw as RotateCcw, Trash2 } from "lucide-react";
+import { Play, Square, RotateCcw, Trash2 } from "lucide-react";
 
 interface SimulationRunnerProps {
   running: boolean;
