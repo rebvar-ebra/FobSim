@@ -163,26 +163,21 @@ export default function Dashboard() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #1e1b4b 0%, #0f172a 100%)" }}>
+    <div className="min-h-screen bg-gradient-to-b from-[#1e1b4b] to-[#0f172a] pb-20">
       {/* Hero */}
-      <div style={{ textAlign: "center", paddingTop: 40, paddingBottom: 20 }}>
-        <div style={{
-          width: 100, height: 100, borderRadius: 20, margin: "0 auto 20px",
-          background: "linear-gradient(135deg, #7c3aed, #a855f7)",
-          boxShadow: "0 0 60px rgba(167,139,250,0.5)",
-          display: "flex", alignItems: "center", justifyContent: "center"
-        }}>
+      <div className="text-center pt-10 pb-5 px-4">
+        <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl mx-auto mb-5 bg-gradient-to-br from-violet-600 to-fuchsia-500 shadow-[0_0_60px_rgba(167,139,250,0.5)] flex items-center justify-center">
           <BlockchainCubeIcon />
         </div>
-        <h1 style={{ fontSize: 42, fontWeight: 700, color: "white", margin: 0 }}>FobSim</h1>
-        <p style={{ color: "#a5b4fc", fontSize: 15, marginTop: 6 }}>Advanced Blockchain Simulation Platform</p>
+        <h1 className="text-3xl md:text-5xl font-bold text-white m-0">FobSim</h1>
+        <p className="text-indigo-300 text-sm md:text-base mt-2">Advanced Blockchain Simulation Platform</p>
       </div>
 
       <StepIndicator currentStep={step} steps={STEPS} />
 
       {/* Main Card */}
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 20px 40px" }}>
-        <div style={{ background: "white", borderRadius: 20, padding: 32, boxShadow: "0 25px 60px rgba(0,0,0,0.3)" }}>
+      <div className="max-w-4xl mx-auto px-4 pb-10">
+        <div className="bg-white rounded-3xl p-6 md:p-10 shadow-2xl">
 
           {step === 1 && (
             <FunctionSelector
@@ -226,16 +221,28 @@ export default function Dashboard() {
           )}
 
           {/* Navigation */}
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 28, paddingTop: 20, borderTop: "1px solid #e2e8f0" }}>
-            <button onClick={() => setStep(Math.max(1, step - 1))} disabled={step === 1} style={{
-              padding: "10px 20px", borderRadius: 10, border: "none", cursor: step === 1 ? "not-allowed" : "pointer",
-              background: "transparent", color: step === 1 ? "#cbd5e1" : "#64748b", fontWeight: 500, fontSize: 14
-            }}>← Back</button>
+          <div className="flex justify-between mt-8 pt-6 border-t border-slate-100">
+            <button 
+              onClick={() => setStep(Math.max(1, step - 1))} 
+              disabled={step === 1} 
+              className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all ${
+                step === 1 ? "text-slate-300 cursor-not-allowed" : "text-slate-500 hover:bg-slate-50"
+              }`}
+            >
+              ← Back
+            </button>
             {step < 4 ? (
-              <button onClick={() => setStep(step + 1)} disabled={(step === 1 && !selectedFunc) || (step === 2 && !selectedCons)} style={{
-                padding: "10px 28px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14, color: "white",
-                background: (step === 1 && !selectedFunc) || (step === 2 && !selectedCons) ? "#cbd5e1" : "linear-gradient(135deg, #06b6d4, #8b5cf6)"
-              }}>Next →</button>
+              <button 
+                onClick={() => setStep(step + 1)} 
+                disabled={(step === 1 && !selectedFunc) || (step === 2 && !selectedCons)} 
+                className={`px-7 py-2.5 rounded-xl font-bold text-sm text-white transition-all ${
+                  (step === 1 && !selectedFunc) || (step === 2 && !selectedCons) 
+                  ? "bg-slate-200 cursor-not-allowed" 
+                  : "bg-gradient-to-r from-cyan-500 to-violet-600 shadow-lg shadow-cyan-500/20 hover:scale-105 active:scale-95"
+                }`}
+              >
+                Next →
+              </button>
             ) : null}
           </div>
         </div>

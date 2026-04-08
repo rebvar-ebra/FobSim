@@ -11,14 +11,20 @@ import {
   User,
   Box,
   LayoutDashboard,
-  Rocket
+  Rocket,
+  X
 } from "lucide-react";
 
 import { useState, useEffect } from "react";
 
 import { API_URL } from "../api";
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const [user, setUser] = useState<{ email: string; full_name: string } | null>(null);
   const router = useRouter();
@@ -55,14 +61,25 @@ export default function Sidebar() {
   ];
 
   return (
-    <div className="w-64 bg-[#0f172a] border-r border-slate-800 flex flex-col h-screen fixed left-0 top-0 z-50">
-      <div className="p-6 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-          <Box className="text-white" size={24} />
+    <div className={`
+      w-64 bg-[#0f172a] border-r border-slate-800 flex flex-col h-screen fixed left-0 top-0 z-50 transition-transform duration-300
+      ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+    `}>
+      <div className="p-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+            <Box className="text-white" size={24} />
+          </div>
+          <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+            FobSim
+          </span>
         </div>
-        <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-          FobSim
-        </span>
+        <button 
+          onClick={onClose}
+          className="lg:hidden p-2 text-slate-400 hover:text-white"
+        >
+          <X size={20} />
+        </button>
       </div>
 
       <nav className="flex-1 px-4 py-4 space-y-2">

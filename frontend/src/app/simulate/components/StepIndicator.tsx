@@ -6,30 +6,38 @@ interface StepIndicatorProps {
 }
 
 export default function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
+  const progressWidth = `${((currentStep - 1) / (steps.length - 1)) * 100}%`;
+
   return (
-    <div style={{ maxWidth: 700, margin: "0 auto 30px", padding: "0 20px" }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", position: "relative" }}>
-        <div style={{ position: "absolute", top: 18, left: 35, right: 35, height: 4, background: "#334155", borderRadius: 2 }} />
-        <div style={{
-          position: "absolute",
-          top: 18,
-          left: 35,
-          width: `${((currentStep - 1) / (steps.length - 1)) * 90}%`,
-          height: 4,
-          background: "linear-gradient(90deg, #06b6d4, #8b5cf6)",
-          borderRadius: 2,
-          transition: "width 0.3s"
-        }} />
+    <div className="max-w-2xl mx-auto mb-10 px-5">
+      <div className="flex items-start justify-between relative">
+        {/* Background Line */}
+        <div className="absolute top-[18px] left-[20px] right-[20px] h-1 bg-slate-700 rounded-full" />
+        
+        {/* Progress Line */}
+        <div 
+          className="absolute top-[18px] left-[20px] h-1 bg-gradient-to-r from-cyan-500 to-violet-600 rounded-full transition-all duration-500"
+          style={{ width: `calc(${progressWidth} - 40px)` }}
+        />
+
         {steps.map((s, i) => (
-          <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", zIndex: 2, flex: 1 }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-              background: currentStep > i + 1 ? "#10b981" : currentStep === i + 1 ? "linear-gradient(135deg, #06b6d4, #8b5cf6)" : "#1e293b",
-              border: currentStep >= i + 1 ? "none" : "3px solid #334155",
-              color: "white", fontWeight: 600, fontSize: 15,
-              boxShadow: currentStep === i + 1 ? "0 0 20px rgba(6,182,212,0.5)" : "none"
-            }}>{currentStep > i + 1 ? "✓" : i + 1}</div>
-            <span style={{ fontSize: 10, marginTop: 8, color: currentStep >= i + 1 ? "#e2e8f0" : "#64748b", textAlign: "center", maxWidth: 80 }}>{s}</span>
+          <div key={i} className="flex flex-col items-center z-10 flex-1">
+            <div className={`
+              w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300
+              ${currentStep > i + 1 
+                ? "bg-emerald-500 text-white" 
+                : currentStep === i + 1 
+                  ? "bg-gradient-to-br from-cyan-500 to-violet-600 text-white shadow-[0_0_20px_rgba(6,182,212,0.4)] scale-110" 
+                  : "bg-slate-800 text-slate-500 border-2 border-slate-700"}
+            `}>
+              {currentStep > i + 1 ? "✓" : i + 1}
+            </div>
+            <span className={`
+              text-[10px] md:text-xs mt-3 text-center max-w-[80px] font-medium transition-colors
+              ${currentStep >= i + 1 ? "text-slate-200" : "text-slate-500"}
+            `}>
+              {s}
+            </span>
           </div>
         ))}
       </div>
