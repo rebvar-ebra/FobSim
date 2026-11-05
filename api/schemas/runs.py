@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import Field, JsonValue
+from pydantic import AwareDatetime, Field, JsonValue
 
 from api.schemas import ResponseSchema
 from api.schemas.experiments import Seed
@@ -39,3 +39,18 @@ class RunResponse(ResponseSchema):
 class RunPage(ResponseSchema):
     items: list[RunResponse]
     next_cursor: UUID | None = None
+
+
+class SimulationHistoryResponse(ResponseSchema):
+    """Flat compatibility history; missing legacy evidence stays null."""
+
+    id: UUID
+    function: str | None
+    placement: str | None
+    consensus: str | None
+    status: RunStatus | None
+    started_at: AwareDatetime | None
+    ended_at: AwareDatetime | None
+    blocks_mined: int | None
+    avg_cpu: float | None
+    energy_used: float | None

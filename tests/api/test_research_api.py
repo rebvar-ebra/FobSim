@@ -1,5 +1,6 @@
 """Research HTTP contracts exercised against the real database and authentication."""
 
+from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 import pytest
@@ -199,6 +200,80 @@ def test_compatibility_history_keeps_shape_rounds_and_reads_all_owner_pages(clie
     assert set(old) == {"id", "function", "placement", "consensus", "status", "started_at",
                         "ended_at", "blocks_mined", "avg_cpu", "energy_used"}
     assert old["avg_cpu"] == 1.23 and old["energy_used"] == 0.123457
+
+
+def test_compatibility_history_sorts_start_times_then_uuid_with_nulls_last(client, workspace, db_session):
+    owner, _, _, _, original, headers, _ = workspace
+    original.public_id = UUID("00000000-0000-0000-0000-000000000002")
+    original.started_at = datetime(2023, 1, 1, tzinfo=timezone.utc)
+    # Insertions deliberately disagree with start times and the UUID tie-breaker.
+    latest = models.Simulation(user_id=owner.id, status="completed",
+        public_id=UUID("00000000-0000-0000-0000-000000000001"),
+        started_at=datetime(2025, 1, 1, tzinfo=timezone.utc))
+    tie_high = models.Simulation(user_id=owner.id, status="completed",
+        public_id=UUID("00000000-0000-0000-0000-000000000009"),
+        started_at=datetime(2024, 1, 1, tzinfo=timezone.utc))
+    tie_low = models.Simulation(user_id=owner.id, status="completed",
+        public_id=UUID("00000000-0000-0000-0000-000000000003"),
+        started_at=datetime(2024, 1, 1, tzinfo=timezone.utc))
+    missing = models.Simulation(user_id=owner.id, status="completed",
+        public_id=UUID("00000000-0000-0000-0000-000000000007"))
+    db_session.add_all([latest, tie_high, tie_low, missing])
+    db_session.commit()
+    db_session.execute(update(models.Simulation).where(models.Simulation.id == missing.id).values(started_at=None))
+    db_session.commit()
+    history = client.get("/api/simulations", headers=headers)
+    assert history.status_code == 200
+    assert [row["id"] for row in history.json()] == [
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-000000000009",
+        "00000000-0000-0000-0000-000000000003",
+        "00000000-0000-0000-0000-000000000002",
+        "00000000-0000-0000-0000-000000000007",
+    ]
+    # Modern run pagination retains insertion order.
+    assert [row["id"] for row in client.get("/api/runs", headers=headers).json()["items"]] == [
+        "00000000-0000-0000-0000-000000000007",
+        "00000000-0000-0000-0000-000000000003",
+        "00000000-0000-0000-0000-000000000009",
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-000000000002",
+    ]
+
+
+def test_compatibility_history_has_explicit_nullable_public_openapi_contract(client, workspace, db_session):
+    _, _, _, _, run, headers, _ = workspace
+    run.function, run.placement, run.consensus = "Data Management", "Fog", "PoW"
+    run.started_at = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    run.ended_at = datetime(2025, 1, 2, tzinfo=timezone.utc)
+    run.blocks_mined, run.avg_cpu, run.energy_used = 3, 1.2345, 0.12345678
+    db_session.commit()
+    response = client.get("/api/simulations", headers=headers)
+    assert response.status_code == 200
+    document = client.get("/openapi.json").json()
+    schema = document["paths"]["/api/simulations"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
+    assert schema["type"] == "array"
+    assert "$ref" in schema["items"]
+    item = document["components"]["schemas"][schema["items"]["$ref"].rsplit("/", 1)[1]]
+    expected_types = {
+        "function": "string", "placement": "string", "consensus": "string", "status": "string",
+        "started_at": "string", "ended_at": "string", "blocks_mined": "integer",
+        "avg_cpu": "number", "energy_used": "number",
+    }
+    assert set(item["properties"]) == {"id", *expected_types}
+    assert set(item["required"]) == {"id", *expected_types}
+    assert item["properties"]["id"]["type"] == "string"
+    assert item["properties"]["id"]["format"] == "uuid"
+    for field, kind in expected_types.items():
+        branches = item["properties"][field]["anyOf"]
+        assert {branch["type"] for branch in branches} == {kind, "null"}
+        if field in {"started_at", "ended_at"}:
+            assert next(branch for branch in branches if branch["type"] == "string")["format"] == "date-time"
+    assert response.json() == [{
+        "id": str(run.public_id), "function": "Data Management", "placement": "Fog", "consensus": "PoW",
+        "status": "completed", "started_at": "2025-01-01T00:00:00Z", "ended_at": "2025-01-02T00:00:00Z",
+        "blocks_mined": 3, "avg_cpu": 1.23, "energy_used": 0.123457,
+    }]
 
 
 def test_all_foreign_and_unknown_resource_requests_are_indistinguishable(client, workspace):

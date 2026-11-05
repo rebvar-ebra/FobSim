@@ -6,13 +6,13 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, WebSocket, BackgroundTasks, Depends, HTTPException, Request, status
 from pydantic import BaseModel, BeforeValidator, Field, ValidationError
 import json
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 import subprocess
 import asyncio
 import logging
 import os
 import psutil
-from typing import Optional, List, Literal, Mapping, Any, Annotated
+from typing import Optional, Literal, Mapping, Any, Annotated
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from database import engine, get_db, SessionLocal
@@ -20,6 +20,7 @@ import models, auth, email_service, password_reset
 from config_schema import SimulationConfig, canonicalize_config, require_integer, to_engine_config
 from fastapi.security import OAuth2PasswordRequestForm
 from api.services.runs import list_owned_runs
+from api.schemas.runs import SimulationHistoryResponse
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -291,7 +292,7 @@ async def update_config(config: SimulationConfig):
         return {"status": "error", "message": str(e)}
 
 
-@router.get("/api/simulations", response_model=List[dict])
+@router.get("/api/simulations", response_model=list[SimulationHistoryResponse])
 async def get_simulations(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     """Keep the frontend's flat history shape using public, owner-scoped run pages."""
     sims = []
@@ -302,6 +303,11 @@ async def get_simulations(db: Session = Depends(get_db), current_user: models.Us
         if page.next_cursor is None:
             break
         cursor = page.next_cursor
+    sims.sort(key=lambda run: (
+        run.started_at is not None,
+        run.started_at or datetime.min.replace(tzinfo=timezone.utc),
+        run.id,
+    ), reverse=True)
     return [
         {
             "id": s.id,
@@ -309,8 +315,8 @@ async def get_simulations(db: Session = Depends(get_db), current_user: models.Us
             "placement": s.placement,
             "consensus": s.consensus,
             "status": s.status,
-            "started_at": s.started_at.isoformat() if s.started_at else None,
-            "ended_at": s.ended_at.isoformat() if s.ended_at else None,
+            "started_at": s.started_at,
+            "ended_at": s.ended_at,
             "blocks_mined": s.blocks_mined,
             "avg_cpu": round(s.avg_cpu, 2) if s.avg_cpu is not None else None,
             "energy_used": round(s.energy_used, 6) if s.energy_used is not None else None
