@@ -14,16 +14,24 @@ from api.services.projects import get_owned_project
 SELECTOR_FIELDS = frozenset({"blockchain_function", "blockchain_placement", "consensus_algorithm"})
 
 
-def _owned_experiments(db: Session, owner_id: int):
-    return db.query(models.Experiment).join(models.ResearchProject).filter(
+def _owned_experiments(db: Session, owner_id: int, *, include_hidden: bool = False):
+    query = db.query(models.Experiment).join(models.ResearchProject).filter(
         models.ResearchProject.user_id == owner_id,
-        models.ResearchProject.deleted_at.is_(None),
-        models.Experiment.archived_at.is_(None),
     )
+    if not include_hidden:
+        query = query.filter(
+            models.ResearchProject.deleted_at.is_(None),
+            models.Experiment.archived_at.is_(None),
+        )
+    return query
 
 
-def get_owned_experiment(db: Session, owner_id: int, experiment_id: UUID) -> models.Experiment | None:
-    return _owned_experiments(db, owner_id).filter(models.Experiment.id == experiment_id).first()
+def get_owned_experiment(db: Session, owner_id: int, experiment_id: UUID, *,
+                         include_hidden: bool = False) -> models.Experiment | None:
+    """Historical run scopes include archived templates and deleted owner projects."""
+    return _owned_experiments(db, owner_id, include_hidden=include_hidden).filter(
+        models.Experiment.id == experiment_id,
+    ).first()
 
 
 def list_owned_experiments(db: Session, owner_id: int, project_id: UUID, *,

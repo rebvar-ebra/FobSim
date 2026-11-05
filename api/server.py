@@ -19,6 +19,7 @@ from database import engine, get_db, SessionLocal
 import models, auth, email_service, password_reset
 from config_schema import SimulationConfig, canonicalize_config, require_integer, to_engine_config
 from fastapi.security import OAuth2PasswordRequestForm
+from api.services.runs import list_owned_runs
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -292,9 +293,15 @@ async def update_config(config: SimulationConfig):
 
 @router.get("/api/simulations", response_model=List[dict])
 async def get_simulations(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    """Get history of simulations for current user"""
-    sims = db.query(models.Simulation).filter(models.Simulation.user_id == current_user.id).order_by(models.Simulation.started_at.desc()).all()
-    # Convert to dict and handle datetimes
+    """Keep the frontend's flat history shape using public, owner-scoped run pages."""
+    sims = []
+    cursor = None
+    while True:
+        page = list_owned_runs(db, current_user.id, cursor=cursor, limit=100)
+        sims.extend(page.items)
+        if page.next_cursor is None:
+            break
+        cursor = page.next_cursor
     return [
         {
             "id": s.id,
@@ -302,11 +309,11 @@ async def get_simulations(db: Session = Depends(get_db), current_user: models.Us
             "placement": s.placement,
             "consensus": s.consensus,
             "status": s.status,
-            "started_at": s.started_at.isoformat(),
+            "started_at": s.started_at.isoformat() if s.started_at else None,
             "ended_at": s.ended_at.isoformat() if s.ended_at else None,
             "blocks_mined": s.blocks_mined,
-            "avg_cpu": round(s.avg_cpu, 2),
-            "energy_used": round(s.energy_used or 0, 6)
+            "avg_cpu": round(s.avg_cpu, 2) if s.avg_cpu is not None else None,
+            "energy_used": round(s.energy_used, 6) if s.energy_used is not None else None
         } for s in sims
     ]
 

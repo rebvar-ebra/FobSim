@@ -12,15 +12,21 @@ class ActiveRunsError(ValueError):
     """A project cannot be deleted while any of its runs are queued or running."""
 
 
-def _owned_projects(db: Session, owner_id: int):
-    return db.query(models.ResearchProject).filter(
+def _owned_projects(db: Session, owner_id: int, *, include_hidden: bool = False):
+    query = db.query(models.ResearchProject).filter(
         models.ResearchProject.user_id == owner_id,
-        models.ResearchProject.deleted_at.is_(None),
     )
+    if not include_hidden:
+        query = query.filter(models.ResearchProject.deleted_at.is_(None))
+    return query
 
 
-def get_owned_project(db: Session, owner_id: int, project_id: UUID) -> models.ResearchProject | None:
-    return _owned_projects(db, owner_id).filter(models.ResearchProject.id == project_id).first()
+def get_owned_project(db: Session, owner_id: int, project_id: UUID, *,
+                      include_hidden: bool = False) -> models.ResearchProject | None:
+    """Historical run scopes may include deleted projects, always owner checked."""
+    return _owned_projects(db, owner_id, include_hidden=include_hidden).filter(
+        models.ResearchProject.id == project_id,
+    ).first()
 
 
 def list_owned_projects(db: Session, owner_id: int, *, cursor: UUID | None = None, limit: int = 50) -> ProjectPage:
