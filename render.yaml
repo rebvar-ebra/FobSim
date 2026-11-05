@@ -10,6 +10,16 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false # Set this in the Render dashboard
+      - key: APP_ENV
+        value: production
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: FRONTEND_URL
+        value: https://fobsim-frontend.onrender.com
       - key: PORT
         value: 8000
 

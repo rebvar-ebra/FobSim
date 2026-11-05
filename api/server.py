@@ -2,7 +2,6 @@
 FobSim API Server
 FastAPI backend to run simulations and return results
 """
-from contextlib import asynccontextmanager
 from fastapi import APIRouter, WebSocket, BackgroundTasks, Depends, HTTPException, Request, status
 from pydantic import BaseModel, BeforeValidator, Field, ValidationError
 import json
@@ -762,21 +761,13 @@ async def websocket_output(websocket: WebSocket):
         pass
 
 
-@asynccontextmanager
-async def initialize_database(app):
-    """Initialize tables only when the deployed server actually starts."""
-    models.Base.metadata.create_all(bind=engine)
-    yield
-
-
 from app_factory import create_app
 
 app = create_app()
-app.router.lifespan_context = initialize_database
 
 
 if __name__ == "__main__":
     import uvicorn
     # Use PORT from env var (Render/Railway/Heroku) or default to 8000
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=port, workers=1)

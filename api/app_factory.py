@@ -2,9 +2,11 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from api.runtime_config import load_runtime_config
 
 
 def create_app() -> FastAPI:
+    config = load_runtime_config()
     # Keep the existing backend import convention used by server.py and uvicorn.
     from server import router
     from api.routes.projects import router as projects_router
@@ -14,7 +16,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="FobSim API", version="1.0.0")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Allow all origins in development
+        allow_origins=[config.frontend_origin],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],

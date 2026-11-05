@@ -15,6 +15,9 @@ from sqlalchemy.pool import StaticPool
 API_DIR = Path(__file__).resolve().parents[1] / "api"
 sys.path.insert(0, str(API_DIR))
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+os.environ["APP_ENV"] = "test"
+os.environ["JWT_SECRET_KEY"] = "test-secret"
+os.environ["FRONTEND_URL"] = "http://localhost:3000"
 
 import auth  # noqa: E402
 import models  # noqa: E402

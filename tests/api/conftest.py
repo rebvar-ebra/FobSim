@@ -16,6 +16,9 @@ API_DIR = Path(__file__).resolve().parents[2] / "api"
 sys.path.insert(0, str(API_DIR))
 # Never let backend tests inherit a deployed database configuration.
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["APP_ENV"] = "test"
+os.environ["JWT_SECRET_KEY"] = "test-secret"
+os.environ["FRONTEND_URL"] = "http://localhost:3000"
 
 import auth  # noqa: E402
 import database  # noqa: E402
