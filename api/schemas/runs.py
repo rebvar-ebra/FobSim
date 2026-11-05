@@ -16,7 +16,8 @@ class RunResponse(ResponseSchema):
     experiment_id: UUID | None
     seed: Seed | None
     engine_version: str | None
-    status: RunStatus
+    # Legacy rows may have no recorded status; preserve that missing evidence.
+    status: RunStatus | None
     function: str | None
     placement: str | None
     consensus: str | None

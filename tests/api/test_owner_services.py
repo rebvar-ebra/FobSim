@@ -194,6 +194,36 @@ def test_run_pagination_is_stable_scoped_and_keeps_legacy_rows(db_session, owner
     assert len(list_owned_runs(db_session, owner.id, experiment_id=experiment.id).items) == 5
 
 
+@pytest.mark.parametrize("consumer", ["response", "pagination"])
+def test_null_status_legacy_run_remains_readable_without_changing_history(db_session, owners, consumer):
+    owner, stranger = owners
+    legacy = make_run(db_session, owner, status=None)
+    newer = make_run(db_session, owner, status="completed")
+    db_session.expire_all()
+    persisted = get_owned_run(db_session, owner.id, legacy.public_id)
+    assert persisted.status is None
+    if consumer == "response":
+        response = RunResponse.model_validate(persisted)
+    else:
+        first = list_owned_runs(db_session, owner.id, limit=1)
+        assert first.items[0].id == newer.public_id and first.next_cursor == newer.public_id
+        last = list_owned_runs(db_session, owner.id, limit=1, cursor=first.next_cursor)
+        assert len(last.items) == 1 and last.next_cursor is None
+        response = last.items[0]
+    assert response.id == legacy.public_id and response.status is None
+    assert response.model_dump(mode="json")["status"] is None
+    assert get_owned_run(db_session, owner.id, legacy.public_id).status is None
+    assert get_owned_run(db_session, stranger.id, legacy.public_id) is None
+    assert list_owned_runs(db_session, owner.id, status="completed").items[0].id == newer.public_id
+
+
+@pytest.mark.parametrize("status", ["unknown", "null", "None", "", 0, True])
+def test_run_status_filter_still_rejects_invalid_states(db_session, owners, status):
+    owner, _ = owners
+    with pytest.raises(ValueError):
+        list_owned_runs(db_session, owner.id, status=status)
+
+
 def test_project_and_experiment_pagination_break_timestamp_ties(db_session, owners):
     owner, stranger = owners
     projects = [create_project(db_session, owner.id, ProjectCreate(name="Duplicate")) for _ in range(3)]
