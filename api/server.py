@@ -4,7 +4,7 @@ FastAPI backend to run simulations and return results
 """
 from contextlib import asynccontextmanager
 from fastapi import APIRouter, WebSocket, BackgroundTasks, Depends, HTTPException, Request, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 import json
 from datetime import timedelta, timezone
 import subprocess
@@ -12,11 +12,12 @@ import asyncio
 import logging
 import os
 import psutil
-from typing import Optional, List
+from typing import Optional, List, Literal, Mapping, Any
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from database import engine, get_db, SessionLocal
 import models, auth, email_service, password_reset
+from config_schema import SimulationConfig, canonicalize_config, to_engine_config
 from fastapi.security import OAuth2PasswordRequestForm
 
 router = APIRouter()
@@ -214,37 +215,19 @@ simulation_output = []
 simulation_running = False
 
 
-class SimConfig(BaseModel):
-    NumOfFogNodes: int = 5
-    num_of_users_per_fog_node: int = 5
-    NumOfTaskPerUser: int = 5
-    NumOfMiners: int = 4
-    number_of_each_miner_neighbours: int = 3
-    numOfTXperBlock: int = 5
-    puzzle_difficulty: int = 2
-    poet_block_time: int = 1
-    Max_enduser_payment: int = 100
-    miners_initial_wallet_value: int = 1000
-    mining_award: int = 5
-    delay_between_fog_nodes: int = 0
-    delay_between_end_users: int = 0
-    Gossip_Activated: bool = True
-    Automatic_PoA_miners_authorization: bool = True
-    Parallel_PoW_mining: bool = False
-    Asymmetric_key_length: int = 512
-    Num_of_DPoS_delegates: int = 2
-    STOR_PLC: int = 0
-    Byzantine_nodes: int = 0
-    Attack_type: int = 0
-    Layer2_Rollup_Enabled: bool = False
-    Layer2_Batch_Size: int = 100
-
-
 class RunSimulation(BaseModel):
-    blockchain_function: int = 1  # 1-4
-    blockchain_placement: int = 1  # 1=Fog, 2=EndUser
-    consensus_algorithm: int = 1  # 1-9
-    config: Optional[SimConfig] = None
+    blockchain_function: Literal[1, 2, 3, 4, 5] = 1
+    blockchain_placement: Literal[1, 2] = 1
+    consensus_algorithm: Literal[1, 2, 3, 4, 5, 6, 8, 9, 10] = 1
+    config: Optional[SimulationConfig] = None
+
+    def effective_config(self, existing: Mapping[str, Any]) -> SimulationConfig:
+        """Validate the complete merged snapshot using this run's placement."""
+        overrides = self.config.model_dump(exclude_unset=True) if self.config else {}
+        return SimulationConfig.model_validate(
+            {**canonicalize_config(existing), **overrides},
+            context={"placement": self.blockchain_placement},
+        )
 
 
 # Consensus algorithm names
@@ -280,25 +263,29 @@ async def get_config():
     config_path = os.path.join(os.path.dirname(__file__), "..", "Sim_parameters.json")
     with open(config_path, "r") as f:
         config = json.load(f)
-    return config
+    return to_engine_config(SimulationConfig.model_validate(config))
 
 
 @router.post("/api/config")
-async def update_config(config: SimConfig):
+async def update_config(config: SimulationConfig):
     """Update simulation configuration"""
     config_path = os.path.join(os.path.dirname(__file__), "..", "Sim_parameters.json")
     try:
         with open(config_path, "r") as f:
             existing_config = json.load(f)
 
-        # Merge new values
-        new_vals = config.model_dump(exclude_unset=True)
-        existing_config.update(new_vals)
+        effective = SimulationConfig.model_validate({
+            **canonicalize_config(existing_config),
+            **config.model_dump(exclude_unset=True),
+        })
+        engine_config = to_engine_config(effective)
 
         with open(config_path, "w") as f:
-            json.dump(existing_config, f, indent=2)
+            json.dump(engine_config, f, indent=2)
 
-        return {"status": "updated", "config": existing_config}
+        return {"status": "updated", "config": engine_config}
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=json.loads(e.json())) from e
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -392,20 +379,17 @@ async def run_simulation(
     if simulation_running:
         return {"status": "error", "message": "Simulation already running"}
 
-    # Update Sim_parameters.json if config is provided
-    if params.config:
-        config_path = os.path.join(os.path.dirname(__file__), "..", "Sim_parameters.json")
-        try:
-            with open(config_path, "r") as f:
-                existing_config = json.load(f)
-
-            new_vals = params.config.model_dump(exclude_unset=True)
-            existing_config.update(new_vals)
-
-            with open(config_path, "w") as f:
-                json.dump(existing_config, f, indent=2)
-        except Exception as e:
-            print(f"Error updating config: {e}")
+    # Snapshot and validate all effective inputs before writing or creating a run.
+    config_path = os.path.join(os.path.dirname(__file__), "..", "Sim_parameters.json")
+    try:
+        with open(config_path, "r") as f:
+            effective = params.effective_config(json.load(f))
+        with open(config_path, "w") as f:
+            json.dump(to_engine_config(effective), f, indent=2)
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=json.loads(e.json())) from e
+    except (OSError, json.JSONDecodeError) as e:
+        raise HTTPException(status_code=500, detail="Could not load or write simulation configuration") from e
 
     # Create DB record
     db_sim = models.Simulation(
@@ -414,7 +398,7 @@ async def run_simulation(
         placement="Fog" if params.blockchain_placement == 1 else "End User",
         consensus=CONSENSUS_ALGORITHMS.get(params.consensus_algorithm),
         status="running",
-        config=params.config.model_dump() if params.config else {}
+        config=effective.model_dump(mode="json")
     )
     db.add(db_sim)
     db.commit()
