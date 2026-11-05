@@ -74,6 +74,15 @@ def test_checked_in_engine_configuration_round_trips_without_losing_fields():
     assert to_engine_config(SimulationConfig.model_validate(canonicalize_config(raw))) == raw
 
 
+def test_default_fog_run_accepts_actual_shipped_configuration():
+    shipped = json.loads((Path(__file__).resolve().parents[2] / "Sim_parameters.json").read_text())
+    request = server.RunSimulation()
+    effective = request.effective_config(shipped)
+    assert request.blockchain_placement == 1
+    assert effective.number_of_each_miner_neighbours <= effective.NumOfFogNodes
+    assert to_engine_config(effective) == shipped
+
+
 def test_conflicting_aliases_and_unknown_settings_are_rejected():
     with pytest.raises(ValidationError):
         canonicalize_config({"Parallel_PoW_mining?": True, "Parallel_PoW_mining": False})
@@ -82,6 +91,33 @@ def test_conflicting_aliases_and_unknown_settings_are_rejected():
     assert canonicalize_config({"Parallel_PoW_mining?": True, "Parallel_PoW_mining": True})[
         "Parallel_PoW_mining"
     ] is True
+
+
+@pytest.mark.parametrize(
+    "canonical", ["Automatic_PoA_miners_authorization", "Parallel_PoW_mining"],
+)
+@pytest.mark.parametrize(("canonical_value", "legacy_value"), [(1, True), (0, False), (True, 1), (False, 0)])
+def test_duplicate_boolean_aliases_reject_integer_boolean_pairs(canonical, canonical_value, legacy_value):
+    with pytest.raises(ValidationError):
+        canonicalize_config({canonical: canonical_value, f"{canonical}?": legacy_value})
+
+
+@pytest.mark.parametrize(
+    "canonical", ["Automatic_PoA_miners_authorization", "Parallel_PoW_mining"],
+)
+@pytest.mark.parametrize("value", [True, False])
+def test_duplicate_boolean_aliases_accept_matching_booleans(canonical, value):
+    snapshot = canonicalize_config({canonical: value, f"{canonical}?": value})
+    assert snapshot[canonical] is value
+
+
+@pytest.mark.parametrize(
+    "canonical", ["Automatic_PoA_miners_authorization", "Parallel_PoW_mining"],
+)
+@pytest.mark.parametrize(("canonical_value", "legacy_value"), [(True, False), (False, True)])
+def test_duplicate_boolean_aliases_reject_unequal_booleans(canonical, canonical_value, legacy_value):
+    with pytest.raises(ValidationError):
+        canonicalize_config({canonical: canonical_value, f"{canonical}?": legacy_value})
 
 
 @pytest.mark.parametrize(
@@ -176,6 +212,53 @@ def test_supported_key_lengths_are_accepted(key_length):
     assert canonicalize_config({"Asymmetric_key_length": key_length})["Asymmetric_key_length"] == key_length
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("Asymmetric_key_length", True), ("Asymmetric_key_length", False),
+        ("Asymmetric_key_length", 512.0), ("Asymmetric_key_length", 1024.0),
+        ("Asymmetric_key_length", 2048.0), ("Asymmetric_key_length", 4096.0),
+        ("STOR_PLC", True), ("STOR_PLC", False),
+        ("STOR_PLC", 0.0), ("STOR_PLC", 1.0),
+        ("Attack_type", True), ("Attack_type", False),
+        ("Attack_type", 0.0), ("Attack_type", 1.0), ("Attack_type", 2.0),
+    ],
+)
+def test_discrete_config_fields_reject_booleans_and_floats(field, value):
+    with pytest.raises(ValidationError):
+        canonicalize_config({field: value})
+
+
+@pytest.mark.parametrize(("field", "value"), [("STOR_PLC", 0), ("STOR_PLC", 1),
+                                             ("Attack_type", 0), ("Attack_type", 1), ("Attack_type", 2)])
+def test_discrete_config_fields_accept_approved_integers(field, value):
+    snapshot = canonicalize_config({field: value})
+    assert snapshot[field] == value
+    assert type(snapshot[field]) is int
+
+
+@pytest.mark.parametrize("field", ["blockchain_function", "blockchain_placement", "consensus_algorithm"])
+@pytest.mark.parametrize("value", [True, False, 1.0, 2.0])
+def test_run_identifiers_reject_booleans_and_floats(field, value):
+    with pytest.raises(ValidationError):
+        server.RunSimulation.model_validate({field: value})
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("blockchain_function", 1), ("blockchain_function", 2), ("blockchain_function", 3),
+     ("blockchain_function", 4), ("blockchain_function", 5),
+     ("blockchain_placement", 1), ("blockchain_placement", 2),
+     ("consensus_algorithm", 1), ("consensus_algorithm", 2), ("consensus_algorithm", 3),
+     ("consensus_algorithm", 4), ("consensus_algorithm", 5), ("consensus_algorithm", 6),
+     ("consensus_algorithm", 8), ("consensus_algorithm", 9), ("consensus_algorithm", 10)],
+)
+def test_run_identifiers_accept_all_approved_integers(field, value):
+    request = server.RunSimulation.model_validate({field: value})
+    assert getattr(request, field) == value
+    assert type(getattr(request, field)) is int
+
+
 @pytest.mark.parametrize(("placement", "expected"), [(1, 4), ("Fog", 4), (2, 8), ("End User", 8)])
 def test_effective_miner_count_uses_the_selected_layer(placement, expected):
     assert effective_miner_count(SimulationConfig(NumOfFogNodes=4, NumOfMiners=8), placement) == expected
@@ -240,6 +323,49 @@ def test_run_without_overrides_persists_file_snapshot(client, db_session, auth_h
     assert response.status_code == 200
     saved = db_session.get(models.Simulation, response.json()["simulation_id"])
     assert saved.config == canonicalize_config({**DEFAULT_ENGINE_CONFIG, "numOfTXperBlock": 17})
+
+
+@pytest.mark.parametrize("use_ui_overrides", [False, True], ids=["default-request", "current-ui-request"])
+def test_default_fog_launch_uses_actual_shipped_configuration(
+    client, db_session, auth_headers, tmp_path, monkeypatch, use_ui_overrides,
+):
+    shipped_path = Path(__file__).resolve().parents[2] / "Sim_parameters.json"
+    shipped_text = shipped_path.read_text()
+    shipped = json.loads(shipped_text)
+    payload = {}
+    if use_ui_overrides:
+        payload = {
+            "blockchain_function": 1,
+            "blockchain_placement": 1,
+            "consensus_algorithm": 1,
+            "config": {field: shipped[field] for field in (
+                "NumOfFogNodes", "NumOfMiners", "numOfTXperBlock", "puzzle_difficulty",
+                "Byzantine_nodes", "Attack_type", "Layer2_Rollup_Enabled", "Layer2_Batch_Size",
+            )},
+        }
+
+    # Validate the real shipped file before isolating the route's config writes.
+    effective = server.RunSimulation.model_validate(payload).effective_config(shipped)
+    assert effective.number_of_each_miner_neighbours <= effective.NumOfFogNodes
+    assert to_engine_config(effective) == shipped
+
+    (tmp_path / "api").mkdir()
+    monkeypatch.setattr(server, "__file__", str(tmp_path / "api" / "server.py"))
+    engine_path = tmp_path / "Sim_parameters.json"
+    engine_path.write_text(shipped_text)
+    monkeypatch.setattr(server, "execute_simulation", AsyncMock())
+    monkeypatch.setattr(server, "simulation_running", False)
+
+    response = client.post("/api/run", headers=auth_headers, json=payload)
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "started"
+    saved = db_session.get(models.Simulation, response.json()["simulation_id"])
+    assert saved.placement == "Fog"
+    assert saved.config["NumOfFogNodes"] == shipped["NumOfFogNodes"]
+    assert saved.config["number_of_each_miner_neighbours"] == shipped["number_of_each_miner_neighbours"]
+    assert json.loads(engine_path.read_text()) == shipped
+    assert shipped_path.read_text() == shipped_text
 
 
 def test_run_without_overrides_writes_default_filled_engine_snapshot(

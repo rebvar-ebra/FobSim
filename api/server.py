@@ -4,7 +4,7 @@ FastAPI backend to run simulations and return results
 """
 from contextlib import asynccontextmanager
 from fastapi import APIRouter, WebSocket, BackgroundTasks, Depends, HTTPException, Request, status
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, BeforeValidator, Field, ValidationError
 import json
 from datetime import timedelta, timezone
 import subprocess
@@ -12,12 +12,12 @@ import asyncio
 import logging
 import os
 import psutil
-from typing import Optional, List, Literal, Mapping, Any
+from typing import Optional, List, Literal, Mapping, Any, Annotated
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from database import engine, get_db, SessionLocal
 import models, auth, email_service, password_reset
-from config_schema import SimulationConfig, canonicalize_config, to_engine_config
+from config_schema import SimulationConfig, canonicalize_config, require_integer, to_engine_config
 from fastapi.security import OAuth2PasswordRequestForm
 
 router = APIRouter()
@@ -216,9 +216,9 @@ simulation_running = False
 
 
 class RunSimulation(BaseModel):
-    blockchain_function: Literal[1, 2, 3, 4, 5] = 1
-    blockchain_placement: Literal[1, 2] = 1
-    consensus_algorithm: Literal[1, 2, 3, 4, 5, 6, 8, 9, 10] = 1
+    blockchain_function: Annotated[Literal[1, 2, 3, 4, 5], BeforeValidator(require_integer)] = 1
+    blockchain_placement: Annotated[Literal[1, 2], BeforeValidator(require_integer)] = 1
+    consensus_algorithm: Annotated[Literal[1, 2, 3, 4, 5, 6, 8, 9, 10], BeforeValidator(require_integer)] = 1
     config: Optional[SimulationConfig] = None
 
     def effective_config(self, existing: Mapping[str, Any]) -> SimulationConfig:

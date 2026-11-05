@@ -8,9 +8,9 @@ field bounds can be checked.
 """
 
 from collections.abc import Mapping
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, ValidationInfo, model_validator
 
 
 # Canonical field -> exact Sim_parameters.json key. Both input normalization and
@@ -67,6 +67,13 @@ def _bounded(name: str, default: int):
     return Field(default=default, ge=minimum, le=maximum)
 
 
+def require_integer(value: Any) -> int:
+    """Keep Literal's equality matching from accepting booleans or floats."""
+    if type(value) is not int:
+        raise ValueError("must be an integer")
+    return value
+
+
 class SimulationConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
 
@@ -86,11 +93,11 @@ class SimulationConfig(BaseModel):
     Gossip_Activated: bool = True
     Automatic_PoA_miners_authorization: bool = True
     Parallel_PoW_mining: bool = False
-    Asymmetric_key_length: Literal[512, 1024, 2048, 4096] = 512
+    Asymmetric_key_length: Annotated[Literal[512, 1024, 2048, 4096], BeforeValidator(require_integer)] = 512
     Num_of_DPoS_delegates: int = _bounded("Num_of_DPoS_delegates", 2)
-    STOR_PLC: Literal[0, 1] = 0
+    STOR_PLC: Annotated[Literal[0, 1], BeforeValidator(require_integer)] = 0
     Byzantine_nodes: int = _bounded("Byzantine_nodes", 0)
-    Attack_type: Literal[0, 1, 2] = 0
+    Attack_type: Annotated[Literal[0, 1, 2], BeforeValidator(require_integer)] = 0
     Layer2_Rollup_Enabled: bool = False
     Layer2_Batch_Size: int = _bounded("Layer2_Batch_Size", 100)
 
@@ -104,7 +111,10 @@ class SimulationConfig(BaseModel):
             if legacy == canonical or legacy not in normalized:
                 continue
             value = normalized.pop(legacy)
-            if canonical in normalized and normalized[canonical] != value:
+            if canonical in normalized and (
+                type(normalized[canonical]) is not type(value)
+                or normalized[canonical] != value
+            ):
                 raise ValueError(f"Conflicting values for {canonical} and {legacy}")
             normalized[canonical] = value
         return normalized
