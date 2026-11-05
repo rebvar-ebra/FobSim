@@ -3,8 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Box, User, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
+import { Box, User, Mail, Lock, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
 import { API_URL } from "../../api";
+
+const HOME_REDIRECT_DELAY_MS = 1500;
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -14,6 +16,7 @@ export default function SignupPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [registered, setRegistered] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,12 +34,15 @@ export default function SignupPage() {
       if (res.ok) {
         const data = await res.json();
         localStorage.setItem("token", data.access_token);
-        router.push("/");
+        setRegistered(true);
+        window.setTimeout(() => {
+          router.replace("/");
+        }, HOME_REDIRECT_DELAY_MS);
       } else {
         const data = await res.json();
         setError(data.detail || "Signup failed");
       }
-    } catch (err) {
+    } catch {
       setError("Connection error. Is the backend running?");
     } finally {
       setLoading(false);
@@ -64,6 +70,7 @@ export default function SignupPage() {
               type="text"
               placeholder="Full Name"
               required
+              disabled={registered}
               className="w-full bg-slate-800/30 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-white placeholder-slate-600 transition-all font-medium"
               value={formData.full_name}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, full_name: e.target.value })}
@@ -76,6 +83,7 @@ export default function SignupPage() {
               type="email"
               placeholder="Email Address"
               required
+              disabled={registered}
               className="w-full bg-slate-800/30 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-white placeholder-slate-600 transition-all font-medium"
               value={formData.email}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, email: e.target.value })}
@@ -88,6 +96,7 @@ export default function SignupPage() {
               type="password"
               placeholder="Password"
               required
+              disabled={registered}
               className="w-full bg-slate-800/30 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-white placeholder-slate-600 transition-all font-medium"
               value={formData.password}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, password: e.target.value })}
@@ -96,12 +105,32 @@ export default function SignupPage() {
 
           {error && <div className="text-red-400 text-xs font-bold py-3 px-4 bg-red-400/10 border border-red-400/20 rounded-xl animate-shake">{error}</div>}
 
+          {registered && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex items-start gap-3 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-3 text-emerald-300"
+            >
+              <CheckCircle2 className="mt-0.5 shrink-0" size={18} />
+              <div>
+                <p className="text-sm font-bold">Registration successful</p>
+                <p className="mt-0.5 text-xs text-emerald-200/70">Taking you to the home page…</p>
+              </div>
+            </div>
+          )}
+
           <button
             type="submit"
-            disabled={loading}
-            className="w-full py-4 bg-gradient-to-r from-cyan-500 to-violet-600 rounded-2xl text-white font-black text-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group shadow-xl shadow-cyan-500/10"
+            disabled={loading || registered}
+            className="w-full py-4 bg-gradient-to-r from-cyan-500 to-violet-600 rounded-2xl text-white font-black text-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group shadow-xl shadow-cyan-500/10 disabled:cursor-not-allowed disabled:opacity-75"
           >
-            {loading ? <Loader2 className="animate-spin" /> : <>Sign Up <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} /></>}
+            {loading ? (
+              <Loader2 className="animate-spin" />
+            ) : registered ? (
+              <><CheckCircle2 size={20} /> Account Created</>
+            ) : (
+              <>Sign Up <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} /></>
+            )}
           </button>
         </form>
 

@@ -51,6 +51,7 @@ Thumbs.db
 # Environment / secrets
 .env
 api/.env
+*.env
 
 # SQLite (replaced by online DB)
 *.db

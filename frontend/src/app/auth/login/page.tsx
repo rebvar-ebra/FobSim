@@ -34,11 +34,16 @@ export default function LoginPage() {
       if (res.ok) {
         const data = await res.json();
         localStorage.setItem("token", data.access_token);
-        router.push("/");
+        const requestedPath = new URLSearchParams(window.location.search).get("next");
+        const destination =
+          requestedPath?.startsWith("/") && !requestedPath.startsWith("//")
+            ? requestedPath
+            : "/";
+        router.push(destination);
       } else {
         setError("Invalid email or password");
       }
-    } catch (err) {
+    } catch {
       setError("Connection error. Is the backend running?");
     } finally {
       setLoading(false);
@@ -84,6 +89,15 @@ export default function LoginPage() {
             />
           </div>
 
+          <div className="flex justify-end">
+            <Link
+              href="/auth/forgot-password"
+              className="text-sm font-bold text-cyan-400 transition-colors hover:text-cyan-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 rounded"
+            >
+              Forgot password?
+            </Link>
+          </div>
+
           {error && <div className="text-red-400 text-xs font-bold py-3 px-4 bg-red-400/10 border border-red-400/20 rounded-xl animate-shake">{error}</div>}
 
           <button
@@ -96,7 +110,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-slate-500 mt-8 font-medium">
-          Don't have an account?{" "}
+          Don’t have an account?{" "}
           <Link href="/auth/signup" className="text-cyan-400 font-bold hover:text-cyan-300 transition-colors">Sign Up</Link>
         </p>
       </div>

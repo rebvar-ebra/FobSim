@@ -2,39 +2,63 @@
 FobSim API Server
 FastAPI backend to run simulations and return results
 """
-from fastapi import FastAPI, WebSocket, BackgroundTasks, Depends, HTTPException, status
+from fastapi import FastAPI, WebSocket, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import subprocess
 import asyncio
+import logging
 import os
 import psutil
 from typing import Optional, List
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from database import engine, get_db, SessionLocal
-import models, auth
+import models, auth, email_service, password_reset
 from fastapi.security import OAuth2PasswordRequestForm
 
 # Initialize database
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="FobSim API", version="1.0.0")
+logger = logging.getLogger(__name__)
+PASSWORD_RESET_COOLDOWN = timedelta(minutes=5)
+password_reset_request_limiter = password_reset.PasswordResetRequestLimiter(
+    per_ip_limit=int(os.environ.get("PASSWORD_RESET_PER_IP_LIMIT", "5")),
+    global_limit=int(os.environ.get("PASSWORD_RESET_GLOBAL_LIMIT", "100")),
+    window_seconds=int(os.environ.get("PASSWORD_RESET_RATE_WINDOW_SECONDS", "900")),
+)
 
 # Auth Models
 class UserCreate(BaseModel):
     email: str
-    password: str
+    password: str = Field(min_length=6, max_length=72)
     full_name: str
 
 class Token(BaseModel):
     access_token: str
     token_type: str
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=6, max_length=72)
+
+PASSWORD_RESET_RESPONSE = {
+    "message": "If an account exists for that email, a reset link has been sent"
+}
+
 # Auth Routes
 @app.post("/api/auth/signup", response_model=Token)
-async def signup(user: UserCreate, db: Session = Depends(get_db)):
+async def signup(
+    user: UserCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -44,6 +68,12 @@ async def signup(user: UserCreate, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    background_tasks.add_task(
+        email_service.send_welcome_email,
+        full_name=new_user.full_name,
+        email=new_user.email,
+    )
 
     access_token = auth.create_access_token(data={"sub": new_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
@@ -56,6 +86,123 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 
     access_token = auth.create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
+
+@app.post("/api/auth/forgot-password")
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    http_request: Request,
+):
+    normalized_email = request.email.strip().lower()
+    client_ip = http_request.client.host if http_request.client else "unknown"
+    if password_reset_request_limiter.allow(client_ip):
+        background_tasks.add_task(
+            process_password_reset_request,
+            normalized_email,
+        )
+
+    return PASSWORD_RESET_RESPONSE
+
+async def process_password_reset_request(
+    normalized_email: str,
+    db_factory=SessionLocal,
+    send_email=email_service.send_password_reset_email,
+):
+    db = db_factory()
+    email_payload = None
+    try:
+        user = (
+            db.query(models.User)
+            .filter(func.lower(models.User.email) == normalized_email)
+            .with_for_update()
+            .first()
+        )
+        if not user:
+            return
+
+        cooldown_started_at = password_reset.utc_now() - PASSWORD_RESET_COOLDOWN
+        recent_request = (
+            db.query(models.PasswordResetToken)
+            .filter(
+                models.PasswordResetToken.user_id == user.id,
+                models.PasswordResetToken.created_at >= cooldown_started_at,
+            )
+            .first()
+        )
+        if recent_request:
+            return
+
+        reset_token = password_reset.generate_password_reset_token()
+        db.add(
+            models.PasswordResetToken(
+                user_id=user.id,
+                token_hash=password_reset.hash_password_reset_token(reset_token),
+                password_fingerprint=password_reset.password_fingerprint(
+                    user.hashed_password
+                ),
+                expires_at=password_reset.password_reset_expiry(),
+            )
+        )
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            logger.exception("Failed to persist password reset request")
+            return
+
+        email_payload = {
+            "full_name": user.full_name,
+            "email": user.email,
+            "reset_token": reset_token,
+        }
+    finally:
+        db.close()
+
+    if email_payload:
+        await send_email(**email_payload)
+
+@app.post("/api/auth/reset-password")
+async def reset_password(
+    request: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    token_hash = password_reset.hash_password_reset_token(request.token)
+    reset_record = (
+        db.query(models.PasswordResetToken)
+        .filter(models.PasswordResetToken.token_hash == token_hash)
+        .with_for_update()
+        .first()
+    )
+    now = password_reset.utc_now()
+    if (
+        not reset_record
+        or reset_record.used_at is not None
+        or reset_record.expires_at <= now
+    ):
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+
+    user = (
+        db.query(models.User)
+        .filter(models.User.id == reset_record.user_id)
+        .with_for_update()
+        .first()
+    )
+    if (
+        not user
+        or reset_record.password_fingerprint
+        != password_reset.password_fingerprint(user.hashed_password)
+    ):
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+
+    reset_record.used_at = now
+    user.hashed_password = auth.get_password_hash(request.new_password)
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Failed to update password")
+        raise HTTPException(status_code=500, detail="Could not update password")
+    return {"message": "Password updated successfully"}
 
 @app.get("/api/auth/me")
 async def get_me(current_user: models.User = Depends(auth.get_current_user)):

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { API_URL } from "../api";
 import { CLOUD_PROVIDERS } from "../utils/cloud_pricing";
-import { STEPS, FUNCTIONS, CONSENSUS, BlockchainCubeIcon } from "./constants";
+import { STEPS, BlockchainCubeIcon } from "./constants";
 
 // Components
 import StepIndicator from "./components/StepIndicator";
@@ -11,8 +11,9 @@ import FunctionSelector from "./components/FunctionSelector";
 import ConsensusSelector from "./components/ConsensusSelector";
 import ParameterConfig from "./components/ParameterConfig";
 import SimulationRunner from "./components/SimulationRunner";
+import RequireAuth from "../components/RequireAuth";
 
-export default function Dashboard() {
+function SimulationDashboard() {
   const [step, setStep] = useState(1);
   const [selectedFunc, setSelectedFunc] = useState(0);
   const [selectedCons, setSelectedCons] = useState(0);
@@ -250,5 +251,13 @@ export default function Dashboard() {
 
       <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <RequireAuth>
+      <SimulationDashboard />
+    </RequireAuth>
   );
 }
