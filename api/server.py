@@ -2,8 +2,8 @@
 FobSim API Server
 FastAPI backend to run simulations and return results
 """
-from fastapi import FastAPI, WebSocket, BackgroundTasks, Depends, HTTPException, Request, status
-from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from fastapi import APIRouter, WebSocket, BackgroundTasks, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 import json
 from datetime import datetime, timedelta
@@ -19,10 +19,7 @@ from database import engine, get_db, SessionLocal
 import models, auth, email_service, password_reset
 from fastapi.security import OAuth2PasswordRequestForm
 
-# Initialize database
-models.Base.metadata.create_all(bind=engine)
-
-app = FastAPI(title="FobSim API", version="1.0.0")
+router = APIRouter()
 logger = logging.getLogger(__name__)
 PASSWORD_RESET_COOLDOWN = timedelta(minutes=5)
 password_reset_request_limiter = password_reset.PasswordResetRequestLimiter(
@@ -53,7 +50,7 @@ PASSWORD_RESET_RESPONSE = {
 }
 
 # Auth Routes
-@app.post("/api/auth/signup", response_model=Token)
+@router.post("/api/auth/signup", response_model=Token)
 async def signup(
     user: UserCreate,
     background_tasks: BackgroundTasks,
@@ -78,7 +75,7 @@ async def signup(
     access_token = auth.create_access_token(data={"sub": new_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.post("/api/auth/login", response_model=Token)
+@router.post("/api/auth/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
@@ -87,7 +84,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     access_token = auth.create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.post("/api/auth/forgot-password")
+@router.post("/api/auth/forgot-password")
 async def forgot_password(
     request: ForgotPasswordRequest,
     background_tasks: BackgroundTasks,
@@ -161,7 +158,7 @@ async def process_password_reset_request(
     if email_payload:
         await send_email(**email_payload)
 
-@app.post("/api/auth/reset-password")
+@router.post("/api/auth/reset-password")
 async def reset_password(
     request: ResetPasswordRequest,
     db: Session = Depends(get_db),
@@ -204,22 +201,13 @@ async def reset_password(
         raise HTTPException(status_code=500, detail="Could not update password")
     return {"message": "Password updated successfully"}
 
-@app.get("/api/auth/me")
+@router.get("/api/auth/me")
 async def get_me(current_user: models.User = Depends(auth.get_current_user)):
     return {
         "id": current_user.id,
         "email": current_user.email,
         "full_name": current_user.full_name
     }
-
-# CORS for Next.js frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins in development
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
 
 # Store simulation output
 simulation_output = []
@@ -281,12 +269,12 @@ BLOCKCHAIN_FUNCTIONS = {
 }
 
 
-@app.get("/")
+@router.get("/")
 async def root():
     return {"message": "FobSim API Server", "version": "1.0.0"}
 
 
-@app.get("/api/config")
+@router.get("/api/config")
 async def get_config():
     """Get current simulation configuration"""
     config_path = os.path.join(os.path.dirname(__file__), "..", "Sim_parameters.json")
@@ -295,7 +283,7 @@ async def get_config():
     return config
 
 
-@app.post("/api/config")
+@router.post("/api/config")
 async def update_config(config: SimConfig):
     """Update simulation configuration"""
     config_path = os.path.join(os.path.dirname(__file__), "..", "Sim_parameters.json")
@@ -315,7 +303,7 @@ async def update_config(config: SimConfig):
         return {"status": "error", "message": str(e)}
 
 
-@app.get("/api/simulations", response_model=List[dict])
+@router.get("/api/simulations", response_model=List[dict])
 async def get_simulations(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     """Get history of simulations for current user"""
     sims = db.query(models.Simulation).filter(models.Simulation.user_id == current_user.id).order_by(models.Simulation.started_at.desc()).all()
@@ -335,7 +323,7 @@ async def get_simulations(db: Session = Depends(get_db), current_user: models.Us
         } for s in sims
     ]
 
-@app.get("/api/analytics/compare")
+@router.get("/api/analytics/compare")
 async def get_comparison_data(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     """Get aggregated comparison data across consensus algorithms with scientific metrics"""
     from sqlalchemy import func
@@ -379,19 +367,19 @@ async def get_comparison_data(db: Session = Depends(get_db), current_user: model
         })
     return results
 
-@app.get("/api/consensus")
+@router.get("/api/consensus")
 async def get_consensus_options():
     """Get available consensus algorithms"""
     return CONSENSUS_ALGORITHMS
 
 
-@app.get("/api/functions")
+@router.get("/api/functions")
 async def get_blockchain_functions():
     """Get available blockchain functions"""
     return BLOCKCHAIN_FUNCTIONS
 
 
-@app.post("/api/run")
+@router.post("/api/run")
 async def run_simulation(
     params: RunSimulation,
     background_tasks: BackgroundTasks,
@@ -458,7 +446,7 @@ async def run_simulation(
 simulation_process = None
 
 
-@app.post("/api/stop")
+@router.post("/api/stop")
 async def stop_simulation():
     """Stop the running simulation"""
     global simulation_running, simulation_process, simulation_output
@@ -697,7 +685,7 @@ async def execute_simulation(blockchain_function: int, placement: int, consensus
             print(f"Failed to update final sim status: {db_e}")
 
 
-@app.get("/api/status")
+@router.get("/api/status")
 async def get_status():
     """Get simulation status and output"""
     return {
@@ -707,7 +695,7 @@ async def get_status():
     }
 
 
-@app.get("/api/results")
+@router.get("/api/results")
 async def get_results():
     """Get simulation results from temporary files"""
     results = {
@@ -748,7 +736,7 @@ async def get_results():
     return results
 
 
-@app.websocket("/ws/output")
+@router.websocket("/ws/output")
 async def websocket_output(websocket: WebSocket):
     """WebSocket for live simulation output"""
     await websocket.accept()
@@ -770,6 +758,19 @@ async def websocket_output(websocket: WebSocket):
             await asyncio.sleep(0.5)
     except Exception:
         pass
+
+
+@asynccontextmanager
+async def initialize_database(app):
+    """Initialize tables only when the deployed server actually starts."""
+    models.Base.metadata.create_all(bind=engine)
+    yield
+
+
+from app_factory import create_app
+
+app = create_app()
+app.router.lifespan_context = initialize_database
 
 
 if __name__ == "__main__":
