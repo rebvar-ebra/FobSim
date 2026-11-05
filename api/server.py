@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, WebSocket, BackgroundTasks, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta, timezone
 import subprocess
 import asyncio
 import logging
@@ -603,7 +603,7 @@ async def execute_simulation(blockchain_function: int, placement: int, consensus
                 if not simulation_running and simulation_process and simulation_process.returncode is None:
                     sim.status = "stopped"
 
-                sim.ended_at = datetime.utcnow()
+                sim.ended_at = models.utc_now()
 
                 # --- Scientific Analytics Parsing ---
                 temp_dir = os.path.join(os.path.dirname(__file__), "..", "temporary")
@@ -666,7 +666,12 @@ async def execute_simulation(blockchain_function: int, placement: int, consensus
                     import sys
                     sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
                     import blockchain as bc_core
-                    duration_sec = (sim.ended_at - sim.started_at).total_seconds()
+                    started_at = sim.started_at
+                    # SQLite returns naive datetimes even for timezone-aware
+                    # columns; these legacy/test values represent UTC.
+                    if started_at.tzinfo is None:
+                        started_at = started_at.replace(tzinfo=timezone.utc)
+                    duration_sec = (sim.ended_at - started_at).total_seconds()
                     sim.energy_used = bc_core.calculate_energy_consumption(sim.consensus, duration_sec)
 
                 else:
