@@ -2,27 +2,29 @@
 FobSim API Server
 FastAPI backend to run simulations and return results
 """
-from fastapi import FastAPI, WebSocket, BackgroundTasks, Depends, HTTPException, Request, status
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, WebSocket, BackgroundTasks, Depends, HTTPException, Request, status
+from pydantic import BaseModel, Field, ValidationError
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import subprocess
 import asyncio
 import logging
 import os
 import psutil
-from typing import Optional, List
+from typing import Optional, Mapping, Any
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from database import engine, get_db, SessionLocal
 import models, auth, email_service, password_reset
+from config_schema import (
+    SimulationConfig, canonicalize_config, to_engine_config, validate_effective_config,
+    BlockchainFunction, BlockchainPlacement, ConsensusAlgorithm,
+)
 from fastapi.security import OAuth2PasswordRequestForm
+from api.services.runs import list_owned_runs
+from api.schemas.runs import SimulationHistoryResponse
 
-# Initialize database
-models.Base.metadata.create_all(bind=engine)
-
-app = FastAPI(title="FobSim API", version="1.0.0")
+router = APIRouter()
 logger = logging.getLogger(__name__)
 PASSWORD_RESET_COOLDOWN = timedelta(minutes=5)
 password_reset_request_limiter = password_reset.PasswordResetRequestLimiter(
@@ -53,7 +55,7 @@ PASSWORD_RESET_RESPONSE = {
 }
 
 # Auth Routes
-@app.post("/api/auth/signup", response_model=Token)
+@router.post("/api/auth/signup", response_model=Token)
 async def signup(
     user: UserCreate,
     background_tasks: BackgroundTasks,
@@ -78,7 +80,7 @@ async def signup(
     access_token = auth.create_access_token(data={"sub": new_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.post("/api/auth/login", response_model=Token)
+@router.post("/api/auth/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
@@ -87,7 +89,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     access_token = auth.create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.post("/api/auth/forgot-password")
+@router.post("/api/auth/forgot-password")
 async def forgot_password(
     request: ForgotPasswordRequest,
     background_tasks: BackgroundTasks,
@@ -161,7 +163,7 @@ async def process_password_reset_request(
     if email_payload:
         await send_email(**email_payload)
 
-@app.post("/api/auth/reset-password")
+@router.post("/api/auth/reset-password")
 async def reset_password(
     request: ResetPasswordRequest,
     db: Session = Depends(get_db),
@@ -204,7 +206,7 @@ async def reset_password(
         raise HTTPException(status_code=500, detail="Could not update password")
     return {"message": "Password updated successfully"}
 
-@app.get("/api/auth/me")
+@router.get("/api/auth/me")
 async def get_me(current_user: models.User = Depends(auth.get_current_user)):
     return {
         "id": current_user.id,
@@ -212,51 +214,26 @@ async def get_me(current_user: models.User = Depends(auth.get_current_user)):
         "full_name": current_user.full_name
     }
 
-# CORS for Next.js frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins in development
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
-
 # Store simulation output
 simulation_output = []
 simulation_running = False
 
 
-class SimConfig(BaseModel):
-    NumOfFogNodes: int = 5
-    num_of_users_per_fog_node: int = 5
-    NumOfTaskPerUser: int = 5
-    NumOfMiners: int = 4
-    number_of_each_miner_neighbours: int = 3
-    numOfTXperBlock: int = 5
-    puzzle_difficulty: int = 2
-    poet_block_time: int = 1
-    Max_enduser_payment: int = 100
-    miners_initial_wallet_value: int = 1000
-    mining_award: int = 5
-    delay_between_fog_nodes: int = 0
-    delay_between_end_users: int = 0
-    Gossip_Activated: bool = True
-    Automatic_PoA_miners_authorization: bool = True
-    Parallel_PoW_mining: bool = False
-    Asymmetric_key_length: int = 512
-    Num_of_DPoS_delegates: int = 2
-    STOR_PLC: int = 0
-    Byzantine_nodes: int = 0
-    Attack_type: int = 0
-    Layer2_Rollup_Enabled: bool = False
-    Layer2_Batch_Size: int = 100
-
-
 class RunSimulation(BaseModel):
-    blockchain_function: int = 1  # 1-4
-    blockchain_placement: int = 1  # 1=Fog, 2=EndUser
-    consensus_algorithm: int = 1  # 1-9
-    config: Optional[SimConfig] = None
+    blockchain_function: BlockchainFunction = 1
+    blockchain_placement: BlockchainPlacement = 1
+    consensus_algorithm: ConsensusAlgorithm = 1
+    config: Optional[SimulationConfig] = None
+
+    def effective_config(self, existing: Mapping[str, Any]) -> SimulationConfig:
+        """Validate the complete merged snapshot using all of this run's selectors."""
+        overrides = self.config.model_dump(exclude_unset=True) if self.config else {}
+        return validate_effective_config(
+            {**canonicalize_config(existing), **overrides},
+            blockchain_function=self.blockchain_function,
+            blockchain_placement=self.blockchain_placement,
+            consensus_algorithm=self.consensus_algorithm,
+        )
 
 
 # Consensus algorithm names
@@ -281,45 +258,60 @@ BLOCKCHAIN_FUNCTIONS = {
 }
 
 
-@app.get("/")
+@router.get("/")
 async def root():
     return {"message": "FobSim API Server", "version": "1.0.0"}
 
 
-@app.get("/api/config")
+@router.get("/api/config")
 async def get_config():
     """Get current simulation configuration"""
     config_path = os.path.join(os.path.dirname(__file__), "..", "Sim_parameters.json")
     with open(config_path, "r") as f:
         config = json.load(f)
-    return config
+    return to_engine_config(SimulationConfig.model_validate(config))
 
 
-@app.post("/api/config")
-async def update_config(config: SimConfig):
+@router.post("/api/config")
+async def update_config(config: SimulationConfig):
     """Update simulation configuration"""
     config_path = os.path.join(os.path.dirname(__file__), "..", "Sim_parameters.json")
     try:
         with open(config_path, "r") as f:
             existing_config = json.load(f)
 
-        # Merge new values
-        new_vals = config.model_dump(exclude_unset=True)
-        existing_config.update(new_vals)
+        effective = SimulationConfig.model_validate({
+            **canonicalize_config(existing_config),
+            **config.model_dump(exclude_unset=True),
+        })
+        engine_config = to_engine_config(effective)
 
         with open(config_path, "w") as f:
-            json.dump(existing_config, f, indent=2)
+            json.dump(engine_config, f, indent=2)
 
-        return {"status": "updated", "config": existing_config}
+        return {"status": "updated", "config": engine_config}
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=json.loads(e.json())) from e
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
 
-@app.get("/api/simulations", response_model=List[dict])
+@router.get("/api/simulations", response_model=list[SimulationHistoryResponse])
 async def get_simulations(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    """Get history of simulations for current user"""
-    sims = db.query(models.Simulation).filter(models.Simulation.user_id == current_user.id).order_by(models.Simulation.started_at.desc()).all()
-    # Convert to dict and handle datetimes
+    """Keep the frontend's flat history shape using public, owner-scoped run pages."""
+    sims = []
+    cursor = None
+    while True:
+        page = list_owned_runs(db, current_user.id, cursor=cursor, limit=100)
+        sims.extend(page.items)
+        if page.next_cursor is None:
+            break
+        cursor = page.next_cursor
+    sims.sort(key=lambda run: (
+        run.started_at is not None,
+        run.started_at or datetime.min.replace(tzinfo=timezone.utc),
+        run.id,
+    ), reverse=True)
     return [
         {
             "id": s.id,
@@ -327,15 +319,15 @@ async def get_simulations(db: Session = Depends(get_db), current_user: models.Us
             "placement": s.placement,
             "consensus": s.consensus,
             "status": s.status,
-            "started_at": s.started_at.isoformat(),
-            "ended_at": s.ended_at.isoformat() if s.ended_at else None,
+            "started_at": s.started_at,
+            "ended_at": s.ended_at,
             "blocks_mined": s.blocks_mined,
-            "avg_cpu": round(s.avg_cpu, 2),
-            "energy_used": round(s.energy_used or 0, 6)
+            "avg_cpu": round(s.avg_cpu, 2) if s.avg_cpu is not None else None,
+            "energy_used": round(s.energy_used, 6) if s.energy_used is not None else None
         } for s in sims
     ]
 
-@app.get("/api/analytics/compare")
+@router.get("/api/analytics/compare")
 async def get_comparison_data(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     """Get aggregated comparison data across consensus algorithms with scientific metrics"""
     from sqlalchemy import func
@@ -379,19 +371,19 @@ async def get_comparison_data(db: Session = Depends(get_db), current_user: model
         })
     return results
 
-@app.get("/api/consensus")
+@router.get("/api/consensus")
 async def get_consensus_options():
     """Get available consensus algorithms"""
     return CONSENSUS_ALGORITHMS
 
 
-@app.get("/api/functions")
+@router.get("/api/functions")
 async def get_blockchain_functions():
     """Get available blockchain functions"""
     return BLOCKCHAIN_FUNCTIONS
 
 
-@app.post("/api/run")
+@router.post("/api/run")
 async def run_simulation(
     params: RunSimulation,
     background_tasks: BackgroundTasks,
@@ -404,20 +396,17 @@ async def run_simulation(
     if simulation_running:
         return {"status": "error", "message": "Simulation already running"}
 
-    # Update Sim_parameters.json if config is provided
-    if params.config:
-        config_path = os.path.join(os.path.dirname(__file__), "..", "Sim_parameters.json")
-        try:
-            with open(config_path, "r") as f:
-                existing_config = json.load(f)
-
-            new_vals = params.config.model_dump(exclude_unset=True)
-            existing_config.update(new_vals)
-
-            with open(config_path, "w") as f:
-                json.dump(existing_config, f, indent=2)
-        except Exception as e:
-            print(f"Error updating config: {e}")
+    # Snapshot and validate all effective inputs before writing or creating a run.
+    config_path = os.path.join(os.path.dirname(__file__), "..", "Sim_parameters.json")
+    try:
+        with open(config_path, "r") as f:
+            effective = params.effective_config(json.load(f))
+        with open(config_path, "w") as f:
+            json.dump(to_engine_config(effective), f, indent=2)
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=json.loads(e.json())) from e
+    except (OSError, json.JSONDecodeError) as e:
+        raise HTTPException(status_code=500, detail="Could not load or write simulation configuration") from e
 
     # Create DB record
     db_sim = models.Simulation(
@@ -426,7 +415,7 @@ async def run_simulation(
         placement="Fog" if params.blockchain_placement == 1 else "End User",
         consensus=CONSENSUS_ALGORITHMS.get(params.consensus_algorithm),
         status="running",
-        config=params.config.model_dump() if params.config else {}
+        config=effective.model_dump(mode="json")
     )
     db.add(db_sim)
     db.commit()
@@ -458,7 +447,7 @@ async def run_simulation(
 simulation_process = None
 
 
-@app.post("/api/stop")
+@router.post("/api/stop")
 async def stop_simulation():
     """Stop the running simulation"""
     global simulation_running, simulation_process, simulation_output
@@ -615,7 +604,7 @@ async def execute_simulation(blockchain_function: int, placement: int, consensus
                 if not simulation_running and simulation_process and simulation_process.returncode is None:
                     sim.status = "stopped"
 
-                sim.ended_at = datetime.utcnow()
+                sim.ended_at = models.utc_now()
 
                 # --- Scientific Analytics Parsing ---
                 temp_dir = os.path.join(os.path.dirname(__file__), "..", "temporary")
@@ -678,7 +667,12 @@ async def execute_simulation(blockchain_function: int, placement: int, consensus
                     import sys
                     sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
                     import blockchain as bc_core
-                    duration_sec = (sim.ended_at - sim.started_at).total_seconds()
+                    started_at = sim.started_at
+                    # SQLite returns naive datetimes even for timezone-aware
+                    # columns; these legacy/test values represent UTC.
+                    if started_at.tzinfo is None:
+                        started_at = started_at.replace(tzinfo=timezone.utc)
+                    duration_sec = (sim.ended_at - started_at).total_seconds()
                     sim.energy_used = bc_core.calculate_energy_consumption(sim.consensus, duration_sec)
 
                 else:
@@ -697,7 +691,7 @@ async def execute_simulation(blockchain_function: int, placement: int, consensus
             print(f"Failed to update final sim status: {db_e}")
 
 
-@app.get("/api/status")
+@router.get("/api/status")
 async def get_status():
     """Get simulation status and output"""
     return {
@@ -707,7 +701,7 @@ async def get_status():
     }
 
 
-@app.get("/api/results")
+@router.get("/api/results")
 async def get_results():
     """Get simulation results from temporary files"""
     results = {
@@ -748,7 +742,7 @@ async def get_results():
     return results
 
 
-@app.websocket("/ws/output")
+@router.websocket("/ws/output")
 async def websocket_output(websocket: WebSocket):
     """WebSocket for live simulation output"""
     await websocket.accept()
@@ -772,8 +766,13 @@ async def websocket_output(websocket: WebSocket):
         pass
 
 
+from app_factory import create_app
+
+app = create_app()
+
+
 if __name__ == "__main__":
     import uvicorn
     # Use PORT from env var (Render/Railway/Heroku) or default to 8000
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=port, workers=1)

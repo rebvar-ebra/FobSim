@@ -1,6 +1,7 @@
 FROM python:3.10-slim
 
 WORKDIR /app
+ENV PYTHONPATH=/app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -16,9 +17,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy all project files (needed for simulation logic)
 COPY . .
+RUN chmod +x api/entrypoint.sh
 
 # Expose API port
 EXPOSE 8000
 
-# Start server using the API directory as module path
-CMD ["python3", "api/server.py"]
+# Apply migrations before starting the single API worker.
+ENTRYPOINT ["/app/api/entrypoint.sh"]

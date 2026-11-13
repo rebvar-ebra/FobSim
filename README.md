@@ -17,11 +17,16 @@ The new Next.js dashboard provides a research-grade interface with:
 **How to run (Dashboard):**
 1. **Install Backend Dependencies**:
    ```bash
-   pip install fastapi uvicorn sqlalchemy passlib[bcrypt] python-jose[cryptography] python-multipart psutil
+   python3 -m pip install -r api/requirements.txt
    ```
-2. **Start the API Server**:
+2. **Configure and start the API Server** from the repository root:
    ```bash
-   python3 api/server.py
+   export APP_ENV=development
+   export JWT_SECRET_KEY=development-secret
+   export FRONTEND_URL=http://localhost:3000
+   export DATABASE_URL=sqlite:///./fobsim-local.db
+   export PYTHONPATH=.
+   ./api/entrypoint.sh
    ```
 3. **Start the Frontend**:
    ```bash
@@ -34,6 +39,52 @@ The new Next.js dashboard provides a research-grade interface with:
 > - The API server automatically binds to `0.0.0.0:8000`.
 > - Ensure your firewall allows incoming traffic on ports **8000** (API) and **3000** (Frontend).
 > - Access the dashboard using the server's IP (e.g., `http://10.64.68.21:3000`).
+> - Set `FRONTEND_URL` to that exact frontend origin before starting the API.
+
+### Backend deployment configuration
+
+Build the backend from the repository root:
+
+```bash
+docker build -f api/Dockerfile -t fobsim-backend:m1 .
+```
+
+The container runs `alembic -c api/alembic.ini upgrade head` from `/app` before
+executing `python3 api/server.py` with one Uvicorn worker. A failed migration
+stops startup. API startup itself never creates tables; direct server launches
+must follow a successful migration. Keep one backend instance while simulation
+execution uses process-local state.
+
+Production requires PostgreSQL 13 or newer: the migration uses the built-in
+`gen_random_uuid()` function. PostgreSQL 16 is covered by the optional migration test.
+
+Experiment saves/clones and simulation launches enforce the same hosted work
+budget: `puzzle_difficulty` is 1–3, total users (fog nodes × users per fog node)
+must be at most 500, and total tasks (users × tasks per user) at most 5,000.
+Expected blocks are total tasks for Computational Services (function 2), or
+`ceil(total tasks / numOfTXperBlock)` for other functions, with a limit of 1,000.
+Parallel PoW (consensus 1 with `Parallel_PoW_mining=true`) permits at most 64
+expected blocks. Payment/Trading (function 3) requires `Max_enduser_payment >= 1`;
+DPoS (consensus 5) requires at least two effective miners in either placement.
+Selector-only experiment edits are validated against the saved configuration.
+
+Production is the default `APP_ENV`; Render also declares it explicitly.
+Configure `DATABASE_URL` and a strong, randomly generated `JWT_SECRET_KEY` in
+your deployment's environment settings. Missing, blank, and known default or
+placeholder JWT secrets stop startup. The documented development secret is
+accepted only with explicit `APP_ENV=development` or `APP_ENV=test`; tests use
+an explicit disposable test secret. Never commit environment files or secrets.
+Changing the JWT signing key invalidates previously issued access tokens.
+
+`FRONTEND_URL` must contain exactly one HTTP(S) origin (scheme, hostname, and
+optional port), with no trailing slash, path, wildcard, or origin list. It is
+the only allowed credentialed CORS origin, including for `PATCH` requests.
+Render declares `https://fobsim-frontend.onrender.com`.
+
+Set `RESEND_API_KEY` and `RESEND_FROM_EMAIL` in the Render dashboard for welcome
+and password-reset emails. `render.yaml` declares these and `JWT_SECRET_KEY`
+with `sync: false`, so their values stay outside source control. Without the
+email settings, sending is skipped using the existing email behavior.
 
 ---
 
