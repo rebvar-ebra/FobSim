@@ -207,6 +207,10 @@ Configuration uses one canonical schema and a central mapping to legacy `Sim_par
 
 Validation includes safe numeric bounds and placement-aware cross-field rules. With Fog placement, effective miner count is `NumOfFogNodes`; otherwise it is `NumOfMiners`. Byzantine count, neighbour count, and DPoS delegates cannot exceed the effective miner count.
 
+The M1 hosted budget caps `puzzle_difficulty` at 3 (minimum 1), total users at 500, total tasks at 5,000, and expected blocks at 1,000. Total users are fog nodes × users per fog node; total tasks are users × tasks per user. Expected blocks match the engine: total tasks for Computational Services (function 2), otherwise `ceil(total_tasks / numOfTXperBlock)`. Parallel PoW (consensus 1 with parallel mining enabled) has a tighter 64-block cap. After placement validation, Payment/Trading (function 3) requires a payment maximum of at least 1 and DPoS (consensus 5) requires at least two effective miners. One selector-aware boundary validates full snapshots before experiment create/update/clone or compatibility launch, including selector-only edits.
+
+Pagination resolves cursor anchors using owner and immutable parent scope independently of deletion, archive, or run status. Continuation results still apply visibility/status filters; unknown or foreign cursors return an empty page.
+
 ## Export bundle
 
 The ZIP reproducibility bundle contains:

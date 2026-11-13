@@ -1,17 +1,14 @@
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BeforeValidator, Field, StringConstraints, field_validator
+from pydantic import Field, StringConstraints, field_validator
 
-from api.config_schema import SimulationConfig, require_integer
+from api.config_schema import SimulationConfig, BlockchainFunction, BlockchainPlacement, ConsensusAlgorithm
 from api.schemas import RequestSchema, ResponseSchema, UpdateSchema
 
 
 ExperimentName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=160)]
-BlockchainFunction = Annotated[Literal[1, 2, 3, 4, 5], BeforeValidator(require_integer)]
-BlockchainPlacement = Annotated[Literal[1, 2], BeforeValidator(require_integer)]
-ConsensusAlgorithm = Annotated[Literal[1, 2, 3, 4, 5, 6, 8, 9, 10], BeforeValidator(require_integer)]
 Seed = Annotated[int, Field(strict=True, ge=-(2**63), le=2**63 - 1)]
 
 

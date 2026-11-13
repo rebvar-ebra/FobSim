@@ -31,7 +31,9 @@ def get_owned_project(db: Session, owner_id: int, project_id: UUID, *,
 
 def list_owned_projects(db: Session, owner_id: int, *, cursor: UUID | None = None, limit: int = 50) -> ProjectPage:
     return paginate_created(_owned_projects(db, owner_id), models.ResearchProject,
-                            ProjectPage, ProjectResponse, cursor=cursor, limit=limit)
+                            ProjectPage, ProjectResponse,
+                            anchor_query=_owned_projects(db, owner_id, include_hidden=True),
+                            cursor=cursor, limit=limit)
 
 
 def create_project(db: Session, owner_id: int, data: ProjectCreate) -> models.ResearchProject:

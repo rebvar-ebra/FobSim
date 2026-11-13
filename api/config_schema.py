@@ -3,8 +3,8 @@
 Canonical defaults preserve the former API defaults, independently of the mutable
 engine file. Numeric limits live in NUMERIC_BOUNDS; placement-dependent limits
 are applied with ``model_validate(raw, context={"placement": placement})``.
-Without placement, a configuration is a reusable template and only its individual
-field bounds can be checked.
+Use validate_effective_config at persistence/launch boundaries to validate the
+complete configuration with strict selectors and the hosted work budget.
 """
 
 from collections.abc import Mapping
@@ -49,7 +49,7 @@ NUMERIC_BOUNDS = {
     "NumOfMiners": (1, 100),
     "number_of_each_miner_neighbours": (0, 100),
     "numOfTXperBlock": (1, 10000),
-    "puzzle_difficulty": (1, 64),
+    "puzzle_difficulty": (1, 3),
     "poet_block_time": (1, 3600),
     "Max_enduser_payment": (0, 1_000_000_000_000),
     "miners_initial_wallet_value": (0, 1_000_000_000_000),
@@ -60,6 +60,11 @@ NUMERIC_BOUNDS = {
     "Byzantine_nodes": (0, 100),
     "Layer2_Batch_Size": (1, 10000),
 }
+
+MAX_TOTAL_USERS = 500
+MAX_TOTAL_TASKS = 5000
+MAX_EXPECTED_BLOCKS = 1000
+MAX_PARALLEL_POW_BLOCKS = 64
 
 
 def _bounded(name: str, default: int):
@@ -72,6 +77,11 @@ def require_integer(value: Any) -> int:
     if type(value) is not int:
         raise ValueError("must be an integer")
     return value
+
+
+BlockchainFunction = Annotated[Literal[1, 2, 3, 4, 5], BeforeValidator(require_integer)]
+BlockchainPlacement = Annotated[Literal[1, 2], BeforeValidator(require_integer)]
+ConsensusAlgorithm = Annotated[Literal[1, 2, 3, 4, 5, 6, 8, 9, 10], BeforeValidator(require_integer)]
 
 
 class SimulationConfig(BaseModel):
@@ -127,6 +137,55 @@ class SimulationConfig(BaseModel):
                 if getattr(self, field) > count:
                     raise ValueError(f"{field} cannot exceed the effective miner count ({count})")
         return self
+
+
+class _EffectiveConfiguration(BaseModel):
+    blockchain_function: BlockchainFunction
+    blockchain_placement: BlockchainPlacement
+    consensus_algorithm: ConsensusAlgorithm
+    config: SimulationConfig
+
+    @model_validator(mode="after")
+    def validate_engine_work(self) -> "_EffectiveConfiguration":
+        # Placement constraints precede selector-dependent engine preconditions.
+        config = SimulationConfig.model_validate(
+            self.config.model_dump(), context={"placement": self.blockchain_placement},
+        )
+        if self.blockchain_function == 3 and config.Max_enduser_payment < 1:
+            raise ValueError("Payment/Trading requires Max_enduser_payment >= 1")
+        if self.consensus_algorithm == 5 and effective_miner_count(config, self.blockchain_placement) < 2:
+            raise ValueError("DPoS requires at least 2 effective miners")
+
+        total_users = config.NumOfFogNodes * config.num_of_users_per_fog_node
+        total_tasks = total_users * config.NumOfTaskPerUser
+        # Match main.py: computational services uses one block per task.
+        expected_blocks = total_tasks if self.blockchain_function == 2 else (
+            total_tasks + config.numOfTXperBlock - 1
+        ) // config.numOfTXperBlock
+        if total_users > MAX_TOTAL_USERS:
+            raise ValueError(f"total_users cannot exceed {MAX_TOTAL_USERS}")
+        if total_tasks > MAX_TOTAL_TASKS:
+            raise ValueError(f"total_tasks cannot exceed {MAX_TOTAL_TASKS}")
+        if expected_blocks > MAX_EXPECTED_BLOCKS:
+            raise ValueError(f"expected_blocks cannot exceed {MAX_EXPECTED_BLOCKS}")
+        if (self.consensus_algorithm == 1 and config.Parallel_PoW_mining
+                and expected_blocks > MAX_PARALLEL_POW_BLOCKS):
+            raise ValueError(f"Parallel PoW expected_blocks cannot exceed {MAX_PARALLEL_POW_BLOCKS}")
+        self.config = config
+        return self
+
+
+def validate_effective_config(
+    config: Mapping[str, Any] | SimulationConfig, *, blockchain_function: int,
+    blockchain_placement: int, consensus_algorithm: int,
+) -> SimulationConfig:
+    """Revalidate all inputs before saving a template or launching an engine run."""
+    # A caller may have mutated a previously validated model; never trust it.
+    raw = config.model_dump() if isinstance(config, BaseModel) else config
+    return _EffectiveConfiguration(
+        config=raw, blockchain_function=blockchain_function,
+        blockchain_placement=blockchain_placement, consensus_algorithm=consensus_algorithm,
+    ).config
 
 
 def canonicalize_config(raw: Mapping[str, Any]) -> dict[str, Any]:

@@ -3,7 +3,7 @@ FobSim API Server
 FastAPI backend to run simulations and return results
 """
 from fastapi import APIRouter, WebSocket, BackgroundTasks, Depends, HTTPException, Request, status
-from pydantic import BaseModel, BeforeValidator, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 import json
 from datetime import datetime, timedelta, timezone
 import subprocess
@@ -11,12 +11,15 @@ import asyncio
 import logging
 import os
 import psutil
-from typing import Optional, Literal, Mapping, Any, Annotated
+from typing import Optional, Mapping, Any
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from database import engine, get_db, SessionLocal
 import models, auth, email_service, password_reset
-from config_schema import SimulationConfig, canonicalize_config, require_integer, to_engine_config
+from config_schema import (
+    SimulationConfig, canonicalize_config, to_engine_config, validate_effective_config,
+    BlockchainFunction, BlockchainPlacement, ConsensusAlgorithm,
+)
 from fastapi.security import OAuth2PasswordRequestForm
 from api.services.runs import list_owned_runs
 from api.schemas.runs import SimulationHistoryResponse
@@ -217,17 +220,19 @@ simulation_running = False
 
 
 class RunSimulation(BaseModel):
-    blockchain_function: Annotated[Literal[1, 2, 3, 4, 5], BeforeValidator(require_integer)] = 1
-    blockchain_placement: Annotated[Literal[1, 2], BeforeValidator(require_integer)] = 1
-    consensus_algorithm: Annotated[Literal[1, 2, 3, 4, 5, 6, 8, 9, 10], BeforeValidator(require_integer)] = 1
+    blockchain_function: BlockchainFunction = 1
+    blockchain_placement: BlockchainPlacement = 1
+    consensus_algorithm: ConsensusAlgorithm = 1
     config: Optional[SimulationConfig] = None
 
     def effective_config(self, existing: Mapping[str, Any]) -> SimulationConfig:
-        """Validate the complete merged snapshot using this run's placement."""
+        """Validate the complete merged snapshot using all of this run's selectors."""
         overrides = self.config.model_dump(exclude_unset=True) if self.config else {}
-        return SimulationConfig.model_validate(
+        return validate_effective_config(
             {**canonicalize_config(existing), **overrides},
-            context={"placement": self.blockchain_placement},
+            blockchain_function=self.blockchain_function,
+            blockchain_placement=self.blockchain_placement,
+            consensus_algorithm=self.consensus_algorithm,
         )
 
 

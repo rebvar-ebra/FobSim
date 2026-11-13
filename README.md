@@ -55,6 +55,19 @@ stops startup. API startup itself never creates tables; direct server launches
 must follow a successful migration. Keep one backend instance while simulation
 execution uses process-local state.
 
+Production requires PostgreSQL 13 or newer: the migration uses the built-in
+`gen_random_uuid()` function. PostgreSQL 16 is covered by the optional migration test.
+
+Experiment saves/clones and simulation launches enforce the same hosted work
+budget: `puzzle_difficulty` is 1–3, total users (fog nodes × users per fog node)
+must be at most 500, and total tasks (users × tasks per user) at most 5,000.
+Expected blocks are total tasks for Computational Services (function 2), or
+`ceil(total tasks / numOfTXperBlock)` for other functions, with a limit of 1,000.
+Parallel PoW (consensus 1 with `Parallel_PoW_mining=true`) permits at most 64
+expected blocks. Payment/Trading (function 3) requires `Max_enduser_payment >= 1`;
+DPoS (consensus 5) requires at least two effective miners in either placement.
+Selector-only experiment edits are validated against the saved configuration.
+
 Production is the default `APP_ENV`; Render also declares it explicitly.
 Configure `DATABASE_URL` and a strong, randomly generated `JWT_SECRET_KEY` in
 your deployment's environment settings. Missing, blank, and known default or

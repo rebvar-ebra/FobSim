@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 import models
-from api.config_schema import SimulationConfig
+from api.config_schema import validate_effective_config
 from api.schemas.experiments import (
     ExperimentCreate, ExperimentUpdate, ExperimentClone, ExperimentResponse, ExperimentPage,
 )
@@ -37,12 +37,15 @@ def get_owned_experiment(db: Session, owner_id: int, experiment_id: UUID, *,
 def list_owned_experiments(db: Session, owner_id: int, project_id: UUID, *,
                            cursor: UUID | None = None, limit: int = 50) -> ExperimentPage:
     query = _owned_experiments(db, owner_id).filter(models.Experiment.project_id == project_id)
+    anchors = _owned_experiments(db, owner_id, include_hidden=True).filter(
+        models.Experiment.project_id == project_id,
+    )
     return paginate_created(query, models.Experiment, ExperimentPage, ExperimentResponse,
-                            cursor=cursor, limit=limit)
+                            anchor_query=anchors, cursor=cursor, limit=limit)
 
 
-def _validated_snapshot(raw, placement):
-    return SimulationConfig.model_validate(raw, context={"placement": placement}).model_dump(mode="json")
+def _validated_snapshot(raw, selectors):
+    return validate_effective_config(raw, **selectors).model_dump(mode="json")
 
 
 def create_experiment(db: Session, owner_id: int, project_id: UUID, data: ExperimentCreate) -> models.Experiment | None:
@@ -50,7 +53,9 @@ def create_experiment(db: Session, owner_id: int, project_id: UUID, data: Experi
         return None
     data = ExperimentCreate.model_validate(data.model_dump())
     values = data.model_dump(exclude={"default_seed"})
-    values["config"] = _validated_snapshot(values["config"], data.blockchain_placement)
+    values["config"] = _validated_snapshot(values["config"], {
+        field: values[field] for field in SELECTOR_FIELDS
+    })
     for field in SELECTOR_FIELDS:
         values[field] = str(values[field])
     if data.default_seed is not None:
@@ -68,9 +73,9 @@ def update_experiment(db: Session, owner_id: int, experiment_id: UUID, data: Exp
     if row is None:
         return None
     changes = ExperimentUpdate.model_validate(data.model_dump(exclude_unset=True)).model_dump(exclude_unset=True)
-    placement = changes.get("blockchain_placement", int(row.blockchain_placement))
-    # Validate before mutating the ORM row, including placement-only edits.
-    changes["config"] = _validated_snapshot(changes.get("config", row.config), placement)
+    selectors = {field: changes.get(field, int(getattr(row, field))) for field in SELECTOR_FIELDS}
+    # Validate the merged state before mutating the row, including selector-only edits.
+    changes["config"] = _validated_snapshot(changes.get("config", row.config), selectors)
     for field, value in changes.items():
         setattr(row, field, str(value) if field in SELECTOR_FIELDS else value)
     row.updated_at = models.utc_now()

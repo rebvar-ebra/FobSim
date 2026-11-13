@@ -8,11 +8,11 @@ def validate_limit(limit: int) -> None:
         raise ValueError("limit must be an integer between 1 and 100")
 
 
-def paginate_created(query, model, page_type, response_type, *, cursor, limit):
-    """Keyset pagination; the supplied query already includes owner/visibility filters."""
+def paginate_created(query, model, page_type, response_type, *, anchor_query, cursor, limit):
+    """Resolve anchors in owner/parent scope, then continue the visible query."""
     validate_limit(limit)
     if cursor is not None:
-        anchor = query.filter(model.id == cursor).first()
+        anchor = anchor_query.filter(model.id == cursor).first()
         if anchor is None:
             return page_type(items=[])
         query = query.filter(or_(

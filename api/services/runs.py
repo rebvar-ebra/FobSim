@@ -40,10 +40,11 @@ def list_owned_runs(db: Session, owner_id: int, *, project_id: UUID | None = Non
             query = query.filter(models.Experiment.project_id == project_id)
         if experiment_id is not None:
             query = query.filter(models.Experiment.id == experiment_id)
+    anchor_query = query
     if status is not None:
         query = query.filter(models.Simulation.status == status)
     if cursor is not None:
-        anchor = query.filter(models.Simulation.public_id == cursor).first()
+        anchor = anchor_query.filter(models.Simulation.public_id == cursor).first()
         if anchor is None:
             return RunPage(items=[])
         query = query.filter(models.Simulation.id < anchor.id)
